@@ -25,6 +25,8 @@ export default function HumanizePage() {
       const res = await humanizeText(text.slice(0, MAX_CHARS), mode);
       setResult(res);
       addHistory({ type: 'humanize', input: text.slice(0, 200), result: res });
+    } catch (err: any) {
+      toast.error(err?.message || 'Humanization failed.');
     } finally {
       setLoading(false);
     }

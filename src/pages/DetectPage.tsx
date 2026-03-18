@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { detectText, DetectionResult } from '@/lib/api';
 import { useAppStore } from '@/lib/store';
 import ResultGauge from '@/components/ResultGauge';
+import { toast } from 'sonner';
 
 const MAX_CHARS = 5000;
 

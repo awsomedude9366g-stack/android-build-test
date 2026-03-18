@@ -24,6 +24,8 @@ export default function SimilarityPage() {
       const res = await checkSimilarity(textA.slice(0, MAX_CHARS), textB.slice(0, MAX_CHARS));
       setResult(res);
       addHistory({ type: 'similarity', input: textA.slice(0, 100), inputB: textB.slice(0, 100), result: res });
+    } catch (err: any) {
+      toast.error(err?.message || 'Similarity check failed.');
     } finally {
       setLoading(false);
     }
