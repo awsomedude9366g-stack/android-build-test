@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { detectText, DetectionResult } from '@/lib/api';
 import { useAppStore } from '@/lib/store';
 import ResultGauge from '@/components/ResultGauge';
+import { toast } from 'sonner';
 
 const MAX_CHARS = 5000;
 
@@ -26,8 +27,9 @@ export default function DetectPage() {
       setScanning(false);
       setResult(res);
       addHistory({ type: 'detection', input: text.slice(0, 200), result: res });
-    } catch {
+    } catch (err: any) {
       setScanning(false);
+      toast.error(err?.message || 'Detection failed. Please try again.');
     } finally {
       setLoading(false);
     }
