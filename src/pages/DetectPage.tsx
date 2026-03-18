@@ -26,8 +26,9 @@ export default function DetectPage() {
       setScanning(false);
       setResult(res);
       addHistory({ type: 'detection', input: text.slice(0, 200), result: res });
-    } catch {
+    } catch (err: any) {
       setScanning(false);
+      toast.error(err?.message || 'Detection failed. Please try again.');
     } finally {
       setLoading(false);
     }
