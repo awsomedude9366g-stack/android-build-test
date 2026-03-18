@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { checkSimilarity, SimilarityResult } from '@/lib/api';
 import { useAppStore } from '@/lib/store';
+import { toast } from 'sonner';
 
 const MAX_CHARS = 5000;
 
