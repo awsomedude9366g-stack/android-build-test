@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Columns2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { checkSimilarity, SimilarityResult } from '@/lib/api';
@@ -15,6 +15,7 @@ export default function SimilarityPage() {
   const [textB, setTextB] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SimilarityResult | null>(null);
+  const [sideBySide, setSideBySide] = useState(false);
 
   const handleCheck = async () => {
     if (!textA.trim() || !textB.trim() || loading) return;
@@ -38,6 +39,13 @@ export default function SimilarityPage() {
       ? 'text-warning'
       : 'text-success';
 
+  const simBarColor =
+    result && result.similarity > 60
+      ? 'bg-destructive'
+      : result && result.similarity > 30
+      ? 'bg-warning'
+      : 'bg-success';
+
   const confidenceBadgeColor =
     result?.confidence === 'High'
       ? 'bg-success/10 text-success'
@@ -47,7 +55,7 @@ export default function SimilarityPage() {
 
   return (
     <div className="min-h-svh pb-20 px-4 pt-4">
-      <button onClick={() => navigate('/')} className="flex items-center gap-1 text-muted-foreground text-sm mb-4">
+      <button onClick={() => navigate('/')} className="flex items-center gap-1 text-muted-foreground text-sm mb-4 active:scale-[0.97] transition-transform">
         <ArrowLeft size={16} /> Back
       </button>
       <h1 className="font-display text-lg text-foreground mb-4">Similarity Checker</h1>
@@ -85,6 +93,7 @@ export default function SimilarityPage() {
             animate={{ opacity: 1, y: 0 }}
             className="mt-6 bg-card border border-border rounded-xl p-4 shadow-resting space-y-4"
           >
+            {/* Header */}
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-foreground">Similarity Score</h2>
               {result.confidence && (
@@ -93,24 +102,74 @@ export default function SimilarityPage() {
                 </span>
               )}
             </div>
+
+            {/* Big score */}
             <div className={`text-4xl font-display text-center ${simColor}`}>{result.similarity}%</div>
+
+            {/* Similarity bar */}
+            <div className="space-y-1">
+              <div className="h-2.5 bg-secondary rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${result.similarity}%` }}
+                  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                  className={`h-full rounded-full ${simBarColor}`}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>0% — Unique</span>
+                <span>100% — Identical</span>
+              </div>
+            </div>
+
             {result.verdict && (
               <div className="text-center text-xs font-medium text-muted-foreground">{result.verdict}</div>
             )}
+
+            {/* Score breakdown */}
+            {result.embedding_similarity != null && result.gpt_similarity != null && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-secondary rounded-lg p-2.5 text-center">
+                  <div className="text-[10px] text-muted-foreground">Embedding Score</div>
+                  <div className="text-sm font-mono font-semibold text-foreground">{result.embedding_similarity}%</div>
+                </div>
+                <div className="bg-secondary rounded-lg p-2.5 text-center">
+                  <div className="text-[10px] text-muted-foreground">GPT Score</div>
+                  <div className="text-sm font-mono font-semibold text-foreground">{result.gpt_similarity}%</div>
+                </div>
+              </div>
+            )}
+
             <p className="text-xs text-muted-foreground leading-relaxed">{result.explanation}</p>
 
-            {/* Matching segments */}
+            {/* Matching segments with highlighting */}
             {result.matching_segments && result.matching_segments.length > 0 && (
               <div className="space-y-2 pt-2 border-t border-border">
-                <h3 className="text-[11px] font-semibold text-foreground">Matching Segments</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[11px] font-semibold text-foreground">Matching Segments</h3>
+                  <button
+                    onClick={() => setSideBySide(!sideBySide)}
+                    className="flex items-center gap-1 text-[10px] font-medium text-accent active:scale-[0.97] transition-transform"
+                  >
+                    <Columns2 size={12} />
+                    {sideBySide ? 'Stack view' : 'Side by side'}
+                  </button>
+                </div>
+
                 {result.matching_segments.slice(0, 5).map((seg, i) => (
-                  <div key={i} className="bg-secondary rounded-lg p-2.5 space-y-1">
-                    <p className="text-[10px] text-muted-foreground">
-                      <span className="font-medium text-foreground">A:</span> "{seg.text_from_A}"
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      <span className="font-medium text-foreground">B:</span> "{seg.text_from_B}"
-                    </p>
+                  <div key={i} className={`bg-secondary rounded-lg p-2.5 ${sideBySide ? 'grid grid-cols-2 gap-2' : 'space-y-1.5'}`}>
+                    <div className={`text-[10px] ${sideBySide ? '' : ''}`}>
+                      <span className="inline-block font-semibold text-accent text-[9px] uppercase tracking-wider mb-0.5">Text A</span>
+                      <p className="text-foreground leading-relaxed bg-accent/5 rounded px-1.5 py-1 border-l-2 border-accent">
+                        {seg.text_from_A}
+                      </p>
+                    </div>
+                    <div className="text-[10px]">
+                      <span className="inline-block font-semibold text-warning text-[9px] uppercase tracking-wider mb-0.5">Text B</span>
+                      <p className="text-foreground leading-relaxed bg-warning/5 rounded px-1.5 py-1 border-l-2 border-warning">
+                        {seg.text_from_B}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
