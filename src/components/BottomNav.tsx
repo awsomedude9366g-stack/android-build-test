@@ -13,30 +13,31 @@ export default function BottomNav() {
   const navigate = useNavigate();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border safe-bottom">
-      <div className="flex items-center justify-around h-14 max-w-lg mx-auto">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/80 glass border-t border-border safe-bottom">
+      <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
         {tabs.map(({ path, icon: Icon, label }) => {
           const active = location.pathname === path;
           return (
             <button
               key={path}
               onClick={() => navigate(path)}
-              className="flex flex-col items-center gap-0.5 px-4 py-1 relative"
+              className="flex flex-col items-center gap-1 px-5 py-2 relative active:scale-[0.95] transition-transform"
             >
               {active && (
                 <motion.div
                   layoutId="nav-pill"
-                  className="absolute -top-px left-2 right-2 h-0.5 bg-accent rounded-full"
+                  className="absolute -top-px left-3 right-3 h-[2px] bg-primary rounded-full"
                   transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                 />
               )}
               <Icon
                 size={20}
-                className={active ? 'text-accent' : 'text-muted-foreground'}
+                strokeWidth={active ? 2 : 1.5}
+                className={`transition-colors duration-200 ${active ? 'text-primary' : 'text-muted-foreground'}`}
               />
               <span
-                className={`text-[10px] font-medium ${
-                  active ? 'text-accent' : 'text-muted-foreground'
+                className={`text-[10px] font-medium transition-colors duration-200 ${
+                  active ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
                 {label}

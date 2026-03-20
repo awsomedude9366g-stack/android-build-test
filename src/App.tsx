@@ -21,7 +21,8 @@ function AppShell() {
   const darkMode = useAppStore((s) => s.darkMode);
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", darkMode);
+    // Always ensure consistent rendering
+    document.documentElement.classList.remove("dark");
   }, [darkMode]);
 
   if (!hasOnboarded) {

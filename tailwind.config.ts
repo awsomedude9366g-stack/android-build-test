@@ -72,6 +72,7 @@ export default {
         },
       },
       borderRadius: {
+        "2xl": "calc(var(--radius) + 0.25rem)",
         xl: "var(--radius)",
         lg: "calc(var(--radius) - 4px)",
         md: "calc(var(--radius) - 6px)",
