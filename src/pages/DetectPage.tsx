@@ -51,136 +51,156 @@ export default function DetectPage() {
       : 'text-warning';
 
   const confidenceLevel = result?.confidence || 'Medium';
-  const confidenceValue = confidenceLevel === 'High' ? 90 : confidenceLevel === 'Medium' ? 60 : 30;
+  const confidenceValue = confidenceLevel === 'High' ? 92 : confidenceLevel === 'Medium' ? 60 : 28;
   const confidenceBarColor = confidenceLevel === 'High' ? 'bg-success' : confidenceLevel === 'Medium' ? 'bg-warning' : 'bg-muted-foreground';
 
-  const confidenceBadgeColor =
-    confidenceLevel === 'High'
-      ? 'bg-success/10 text-success'
-      : confidenceLevel === 'Medium'
-      ? 'bg-warning/10 text-warning'
-      : 'bg-muted text-muted-foreground';
-
   return (
-    <div className="min-h-svh pb-20 px-4 pt-4">
-      <button onClick={() => navigate('/')} className="flex items-center gap-1 text-muted-foreground text-sm mb-4 active:scale-[0.97] transition-transform">
-        <ArrowLeft size={16} /> Back
-      </button>
-      <h1 className="font-display text-lg text-foreground mb-4">AI Text Detector</h1>
+    <div className="min-h-svh pb-24 px-5 pt-6">
+      {/* Back */}
+      <motion.button
+        initial={{ opacity: 0, x: -8 }}
+        animate={{ opacity: 1, x: 0 }}
+        onClick={() => navigate('/')}
+        className="flex items-center gap-1.5 text-muted-foreground text-sm mb-6 active:scale-[0.97] transition-transform"
+      >
+        <ArrowLeft size={16} strokeWidth={1.8} /> Back
+      </motion.button>
 
-      <div className="relative">
+      <motion.h1
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="font-display text-xl text-foreground mb-5 tracking-tight"
+      >
+        AI Text Detector
+      </motion.h1>
+
+      {/* Input */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="relative"
+      >
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Paste or type text to analyze…"
-          className="w-full min-h-[200px] p-4 bg-secondary border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:border-accent outline-none resize-none transition-colors"
+          className="w-full min-h-[200px] p-4 bg-card border border-border rounded-2xl text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary/40 focus:shadow-glow outline-none resize-none transition-all duration-300"
           maxLength={MAX_CHARS}
         />
         {scanning && (
-          <div className="absolute inset-0 overflow-hidden rounded-xl pointer-events-none">
-            <div className="animate-scan absolute inset-x-0 h-8 bg-gradient-to-b from-accent/20 to-transparent" />
+          <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+            <div className="animate-scan absolute inset-x-0 h-10 bg-gradient-to-b from-primary/15 to-transparent" />
           </div>
         )}
-      </div>
+      </motion.div>
 
-      <div className="flex items-center justify-between mt-2 mb-4">
-        <span className="text-[10px] text-muted-foreground">{text.length}/{MAX_CHARS}</span>
-        <label className="flex items-center gap-1 text-xs text-muted-foreground cursor-pointer active:scale-[0.97] transition-transform">
-          <Upload size={14} />
+      <div className="flex items-center justify-between mt-2.5 mb-5">
+        <span className="text-[10px] text-muted-foreground font-mono">{text.length}/{MAX_CHARS}</span>
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer active:scale-[0.97] transition-transform hover:text-foreground">
+          <Upload size={14} strokeWidth={1.8} />
           Upload .txt
           <input type="file" accept=".txt" className="hidden" onChange={handleFile} />
         </label>
       </div>
 
-      <button
+      {/* CTA */}
+      <motion.button
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        whileTap={{ scale: 0.97 }}
         onClick={handleDetect}
         disabled={!text.trim() || loading}
-        className="h-12 w-full bg-primary text-primary-foreground rounded-xl font-medium active:scale-[0.97] transition-transform disabled:opacity-40"
+        className="h-13 w-full bg-primary text-primary-foreground rounded-2xl font-semibold text-sm tracking-tight disabled:opacity-30 transition-all duration-200 hover:shadow-glow"
+        style={{ height: '52px' }}
       >
-        {loading ? 'Analyzing syntax patterns…' : 'Start Detection'}
-      </button>
+        {loading ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+            Analyzing…
+          </span>
+        ) : 'Start Detection'}
+      </motion.button>
 
+      {/* Results */}
       <AnimatePresence>
         {result && (
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-6 bg-card border border-border rounded-xl p-4 shadow-resting space-y-4"
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-6 bg-card border border-border rounded-2xl p-5 shadow-resting space-y-5"
           >
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">Estimated AI Probability</h2>
-              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${confidenceBadgeColor}`}>
-                {confidenceLevel} confidence
-              </span>
-            </div>
-
-            {/* Gauge */}
+            {/* Circular gauge */}
             <ResultGauge percentage={result.ai_probability} />
-            <div className="flex justify-between text-xs">
-              <span className="text-success font-mono">{result.human_probability}% Human</span>
-              <span className="text-destructive font-mono">{result.ai_probability}% AI</span>
+
+            {/* Human vs AI */}
+            <div className="flex justify-between text-xs px-2">
+              <span className="text-success font-mono font-medium">{result.human_probability}% Human</span>
+              <span className="text-destructive font-mono font-medium">{result.ai_probability}% AI</span>
             </div>
 
             {/* Verdict */}
-            <div className={`text-center text-lg font-display ${verdictColor}`}>{result.verdict}</div>
+            <div className={`text-center text-lg font-display tracking-tight ${verdictColor}`}>
+              {result.verdict}
+            </div>
 
-            {/* Confidence Meter */}
-            <div className="space-y-1.5">
+            {/* Confidence meter */}
+            <div className="space-y-2 bg-secondary/50 rounded-xl p-3.5">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-muted-foreground">Confidence Meter</span>
-                <span className="text-[11px] font-mono text-foreground">{confidenceValue}%</span>
+                <span className="text-[11px] font-medium text-muted-foreground">Confidence</span>
+                <span className="text-[11px] font-mono text-foreground font-medium">{confidenceLevel}</span>
               </div>
-              <div className="h-2 bg-secondary rounded-full overflow-hidden">
+              <div className="h-1.5 bg-background rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${confidenceValue}%` }}
-                  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                   className={`h-full rounded-full ${confidenceBarColor}`}
                 />
               </div>
             </div>
 
-            {/* Statistical Details */}
+            {/* Statistical details */}
             {result.statistical_details && (
-              <div className="grid grid-cols-3 gap-2 pt-1">
-                <div className="bg-secondary rounded-lg p-2 text-center">
-                  <div className="text-[10px] text-muted-foreground">Sentence Var.</div>
-                  <div className="text-xs font-mono font-semibold text-foreground">{result.statistical_details.sentenceVariance}</div>
-                </div>
-                <div className="bg-secondary rounded-lg p-2 text-center">
-                  <div className="text-[10px] text-muted-foreground">Repetition</div>
-                  <div className="text-xs font-mono font-semibold text-foreground">{result.statistical_details.repetitionPct}%</div>
-                </div>
-                <div className="bg-secondary rounded-lg p-2 text-center">
-                  <div className="text-[10px] text-muted-foreground">Vocab Div.</div>
-                  <div className="text-xs font-mono font-semibold text-foreground">{result.statistical_details.vocabDiversity}</div>
-                </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: 'Sentence Var.', value: result.statistical_details.sentenceVariance },
+                  { label: 'Repetition', value: `${result.statistical_details.repetitionPct}%` },
+                  { label: 'Vocab Div.', value: result.statistical_details.vocabDiversity },
+                ].map((stat) => (
+                  <div key={stat.label} className="bg-secondary/50 rounded-xl p-3 text-center">
+                    <div className="text-[9px] text-muted-foreground uppercase tracking-wider font-medium">{stat.label}</div>
+                    <div className="text-sm font-mono font-semibold text-foreground mt-1">{stat.value}</div>
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* Why this result? */}
+            {/* Why this result */}
             <Collapsible open={whyOpen} onOpenChange={setWhyOpen}>
-              <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-medium text-accent py-2 active:scale-[0.98] transition-transform">
+              <CollapsibleTrigger className="flex items-center justify-between w-full text-xs font-medium text-primary py-2 active:scale-[0.98] transition-transform">
                 <span className="flex items-center gap-1.5">
-                  <BarChart3 size={13} />
+                  <BarChart3 size={13} strokeWidth={1.8} />
                   Why this result?
                 </span>
-                <ChevronDown size={14} className={`transition-transform duration-200 ${whyOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown size={14} className={`transition-transform duration-300 ${whyOpen ? 'rotate-180' : ''}`} />
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <motion.div
+                <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-xs text-muted-foreground leading-relaxed pb-1"
+                  className="text-xs text-muted-foreground leading-relaxed pb-1 pl-5"
                 >
                   {result.reason}
-                </motion.div>
+                </motion.p>
               </CollapsibleContent>
             </Collapsible>
 
-            <p className="text-[10px] text-muted-foreground/60 text-center flex items-center justify-center gap-1">
-              <Shield size={10} /> Algorithmic + statistical estimation. Use as a secondary reference.
+            <p className="text-[10px] text-muted-foreground/40 text-center flex items-center justify-center gap-1.5 pt-1">
+              <Shield size={10} strokeWidth={1.8} /> Algorithmic + statistical estimation
             </p>
           </motion.div>
         )}
