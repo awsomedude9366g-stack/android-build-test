@@ -40,10 +40,9 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
 
-    // Chunk long text (~800 words per chunk)
     const words = text.split(/\s+/);
     const CHUNK_SIZE = 800;
     const chunks: string[] = [];
@@ -54,14 +53,14 @@ serve(async (req) => {
     const results: { ai_probability: number; human_probability: number; reason: string }[] = [];
 
     for (const chunk of chunks) {
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "openai/gpt-5",
+          model: "gpt-4o",
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: chunk },
@@ -96,14 +95,14 @@ serve(async (req) => {
             status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        if (response.status === 402) {
-          return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), {
+        if (response.status === 402 || response.status === 401) {
+          return new Response(JSON.stringify({ error: "OpenAI API key is invalid or has insufficient credits." }), {
             status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
         const errText = await response.text();
-        console.error("AI gateway error:", response.status, errText);
-        throw new Error("AI gateway error");
+        console.error("OpenAI API error:", response.status, errText);
+        throw new Error("OpenAI API error");
       }
 
       const data = await response.json();
@@ -114,11 +113,8 @@ serve(async (req) => {
       }
     }
 
-    if (results.length === 0) {
-      throw new Error("No results from AI analysis");
-    }
+    if (results.length === 0) throw new Error("No results from AI analysis");
 
-    // Aggregate chunk results
     const avgAi = Math.round(results.reduce((s, r) => s + r.ai_probability, 0) / results.length);
     const avgHuman = 100 - avgAi;
     const verdict = avgAi >= 66 ? "Likely AI" : avgAi <= 45 ? "Likely Human" : "Mixed Content";
