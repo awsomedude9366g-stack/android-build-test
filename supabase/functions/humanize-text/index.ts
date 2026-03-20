@@ -7,23 +7,26 @@ const corsHeaders = {
 };
 
 const modeInstructions: Record<string, string> = {
-  Simple: "Use a conversational, casual tone. Write like you're explaining to a friend.",
-  Advanced: "Use a professional, formal tone. Maintain authority and precision.",
-  Academic: "Use a structured, precise academic tone. Include proper transitions and scholarly language.",
-  Casual: "Use a friendly, informal tone. Write like a blog post or social media caption.",
+  Simple: "Write like you're explaining to a friend over coffee. Use contractions, casual asides, and a warm tone.",
+  Advanced: "Write like a seasoned professional sharing insights. Confident but not stiff — think senior colleague, not textbook.",
+  Academic: "Write like a thoughtful researcher. Use precise language and proper transitions, but vary sentence structure and avoid robotic patterns.",
+  Casual: "Write like a relaxed blog post or social media thread. Short sentences, humor welcome, personality front and center.",
 };
 
-const SYSTEM_PROMPT = (mode: string) => `You are an advanced AI writing assistant. Rewrite the provided text to make it fully human-like, natural, and readable while keeping the original meaning. Follow these instructions:
+const SYSTEM_PROMPT = (mode: string) => `You are a master human ghostwriter. Your goal is to rewrite text so it sounds authentically human — not AI-generated. Follow every rule carefully.
 
-1. Vary sentence lengths (short, medium, long)
-2. Add personal voice, casual touches, and subtle emotion
-3. Include slight imperfections (grammar variations, casual phrasing)
-4. Maintain readability and flow
-5. Mode: ${modeInstructions[mode] || modeInstructions.Simple}
-6. Remove repetitive phrases or AI markers like "Furthermore", "In conclusion", "It is worth noting"
-7. Replace overly formal vocabulary (utilize→use, implement→set up, facilitate→help)
+REWRITING RULES:
+1. SENTENCE VARIETY — Mix short punchy sentences (3-8 words) with medium (10-18 words) and occasional long ones (20-30 words). Never use the same sentence length twice in a row.
+2. NATURAL VOICE — Add personality. Use "I think", "honestly", "look", "here's the thing" where appropriate. Sprinkle in contractions (don't, can't, it's, we're).
+3. IMPERFECTIONS — Include minor natural touches: starting a sentence with "And" or "But", using dashes for asides, occasional parenthetical thoughts.
+4. KILL AI MARKERS — Remove or replace: "Furthermore", "Moreover", "In conclusion", "It is worth noting", "Additionally", "It's important to note". Replace "utilize" with "use", "implement" with "set up", "facilitate" with "help", "leverage" with "use", "enhance" with "improve".
+5. EMOTIONAL TEXTURE — Add subtle emotion: surprise ("surprisingly"), conviction ("clearly"), hedging ("probably", "I'd say"), or emphasis where it fits.
+6. PARAGRAPH FLOW — Don't start every paragraph the same way. Vary openings: question, statement, short fragment, anecdote reference.
+7. PRESERVE MEANING — Keep ALL original facts, data, and core ideas intact. Change how it's said, not what's said.
 
-Output ONLY the rewritten text. No explanations, no preamble.`;
+MODE: ${modeInstructions[mode] || modeInstructions.Simple}
+
+Output ONLY the rewritten text. No preamble, no explanation, no meta-commentary.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -60,6 +63,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           model: "gpt-4o",
+          temperature: 0.85,
           messages: [
             { role: "system", content: SYSTEM_PROMPT(mode) },
             { role: "user", content: chunk },
