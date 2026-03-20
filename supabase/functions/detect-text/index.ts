@@ -6,23 +6,41 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `You are a professional AI text detection engine. Analyze the given text and estimate whether it is human-written, AI-generated, or mixed. Consider these signals:
+const SYSTEM_PROMPT = `You are an expert AI text detection engine. Your job is to estimate whether text is human-written, AI-generated, or a mix.
 
-- Sentence structure and paragraph patterns
-- Tone consistency and emotional variance
-- Repetitive phrases or filler words ("Furthermore", "In conclusion", "It is worth noting")
-- Overly neutral or "safe" language
-- Presence or absence of subtle errors typical for humans
-- Lexical markers: overuse of formal vocabulary like "utilize", "implement", "facilitate"
-- Advanced markers: lack of subtle errors, predictable openings, robotic structure
-- Perplexity and burstiness patterns
+CRITICAL RULES — read carefully:
+- Do NOT classify text as AI simply because it is well-structured, formal, or grammatically correct. Many humans write clean, organized prose.
+- Only assign high AI probability (>65%) when MULTIPLE strong AI signals appear CONSISTENTLY throughout the text.
+- If you see even moderate human signals, significantly reduce the AI score.
 
-Scoring:
+AI SIGNALS (must appear repeatedly to matter):
+- Repetitive sentence structure (same length, same pattern paragraph after paragraph)
+- Generic filler transitions: "Furthermore", "Moreover", "In conclusion", "It is worth noting", "Additionally"
+- Overly neutral, hedging, "safe" tone throughout — no personality or opinion
+- Predictable paragraph openings (each paragraph starts with a topic sentence + elaboration pattern)
+- Overuse of formal vocabulary: "utilize", "facilitate", "implement", "leverage", "enhance"
+- Lack of any subtle grammatical imperfections
+- Robotic uniformity — every sentence ~same complexity
+
+HUMAN SIGNALS (presence should LOWER AI score):
+- Personal voice, opinions, or anecdotes (I think, I believe, in my experience)
+- Sentence length variation — mix of short punchy and longer complex sentences
+- Informal phrasing, contractions (don't, can't, it's, won't, I've)
+- Subtle imperfections, colloquialisms, or conversational asides
+- Emotional language or humor
+- Unique word choices or creative phrasing
+
+SCORING:
 0–20% → Clearly Human
-21–45% → Mostly Human
-46–65% → Mixed/AI-assisted Human
+21–45% → Mostly Human  
+46–65% → Mixed / AI-assisted
 66–85% → Mostly AI
 86–100% → Clearly AI
+
+Also provide a confidence level:
+- "High" if you are very certain of your assessment
+- "Medium" if the text has ambiguous signals
+- "Low" if the text is too short or unclear to judge well
 
 You MUST use the detect_result tool to return your analysis.`;
 
@@ -50,7 +68,7 @@ serve(async (req) => {
       chunks.push(words.slice(i, i + CHUNK_SIZE).join(" "));
     }
 
-    const results: { ai_probability: number; human_probability: number; reason: string }[] = [];
+    const results: { ai_probability: number; confidence: string; reason: string }[] = [];
 
     for (const chunk of chunks) {
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -77,9 +95,10 @@ serve(async (req) => {
                     ai_probability: { type: "number", description: "AI probability 0-100" },
                     human_probability: { type: "number", description: "Human probability 0-100" },
                     verdict: { type: "string", enum: ["Likely AI", "Likely Human", "Mixed Content"] },
-                    reason: { type: "string", description: "1-2 sentence explanation" },
+                    confidence: { type: "string", enum: ["Low", "Medium", "High"] },
+                    reason: { type: "string", description: "1-2 sentence explanation focusing on specific signals found" },
                   },
-                  required: ["ai_probability", "human_probability", "verdict", "reason"],
+                  required: ["ai_probability", "human_probability", "verdict", "confidence", "reason"],
                   additionalProperties: false,
                 },
               },
@@ -115,15 +134,46 @@ serve(async (req) => {
 
     if (results.length === 0) throw new Error("No results from AI analysis");
 
-    const avgAi = Math.round(results.reduce((s, r) => s + r.ai_probability, 0) / results.length);
+    // Aggregate scores
+    let avgAi = Math.round(results.reduce((s, r) => s + r.ai_probability, 0) / results.length);
+
+    // === POST-PROCESSING SCORE ADJUSTMENTS ===
+    const lowerText = text.toLowerCase();
+
+    // Personal tone indicators
+    const personalPatterns = /\b(i think|i believe|in my experience|i feel|i've seen|we think|my opinion|personally)\b/gi;
+    const personalMatches = (lowerText.match(personalPatterns) || []).length;
+    if (personalMatches >= 1) avgAi = Math.max(0, avgAi - 5 * Math.min(personalMatches, 4));
+
+    // First person pronouns
+    const firstPersonCount = (lowerText.match(/\b(i|we|my|our|me|us)\b/g) || []).length;
+    const wordCount = words.length;
+    const firstPersonRatio = firstPersonCount / wordCount;
+    if (firstPersonRatio > 0.02) avgAi = Math.max(0, avgAi - 8);
+
+    // Informal language / contractions
+    const informalPatterns = /\b(don't|can't|won't|isn't|aren't|couldn't|shouldn't|wouldn't|it's|i'm|i've|we're|they're|that's|what's|here's|there's|gonna|gotta|wanna|kinda|sorta)\b/gi;
+    const informalMatches = (lowerText.match(informalPatterns) || []).length;
+    if (informalMatches >= 2) avgAi = Math.max(0, avgAi - 5 * Math.min(informalMatches, 3));
+
+    // Clamp
+    avgAi = Math.max(0, Math.min(100, Math.round(avgAi)));
     const avgHuman = 100 - avgAi;
+
     const verdict = avgAi >= 66 ? "Likely AI" : avgAi <= 45 ? "Likely Human" : "Mixed Content";
+
+    // Aggregate confidence
+    const confidenceLevels = results.map(r => r.confidence || "Medium");
+    const confMap: Record<string, number> = { Low: 1, Medium: 2, High: 3 };
+    const avgConf = confidenceLevels.reduce((s, c) => s + (confMap[c] || 2), 0) / confidenceLevels.length;
+    const confidence = avgConf >= 2.5 ? "High" : avgConf >= 1.5 ? "Medium" : "Low";
+
     const reason = results.length === 1
       ? results[0].reason
       : `Averaged across ${results.length} text segments. ${results[0].reason}`;
 
     return new Response(
-      JSON.stringify({ ai_probability: avgAi, human_probability: avgHuman, verdict, reason }),
+      JSON.stringify({ ai_probability: avgAi, human_probability: avgHuman, verdict, confidence, reason }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {

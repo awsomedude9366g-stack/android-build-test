@@ -6,12 +6,20 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `You are a professional semantic similarity engine. Compare two texts and calculate similarity based on meaning, not only exact words. Consider:
+const SYSTEM_PROMPT = `You are a professional semantic similarity engine. Compare two texts based on MEANING, not surface-level word matching. Consider:
 
-- Exact phrase matches
-- Paraphrased content and synonyms
-- Sentence/paragraph reordering
-- Semantic context
+- Paraphrased content conveying the same ideas
+- Synonyms and equivalent expressions
+- Sentence or paragraph reordering that preserves meaning
+- Shared arguments, claims, or data points
+- Structural similarity in reasoning flow
+
+Do NOT inflate similarity just because texts share a topic. Two articles about "climate change" with different arguments should score low.
+
+Provide a confidence level:
+- "High" if the texts are long enough and you're certain
+- "Medium" if texts are moderate length or have ambiguous overlap
+- "Low" if texts are very short or unclear
 
 You MUST use the similarity_result tool to return your analysis.`;
 
@@ -66,9 +74,10 @@ serve(async (req) => {
                     },
                   },
                   verdict: { type: "string", enum: ["Low Similarity", "Moderate Similarity", "High Similarity"] },
+                  confidence: { type: "string", enum: ["Low", "Medium", "High"] },
                   reason: { type: "string", description: "Explanation based on semantic match" },
                 },
-                required: ["similarity_percentage", "matching_segments", "verdict", "reason"],
+                required: ["similarity_percentage", "matching_segments", "verdict", "confidence", "reason"],
                 additionalProperties: false,
               },
             },
@@ -105,6 +114,7 @@ serve(async (req) => {
         similarity: result.similarity_percentage,
         matching_segments: result.matching_segments || [],
         verdict: result.verdict,
+        confidence: result.confidence || "Medium",
         explanation: result.reason,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

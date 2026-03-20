@@ -4,6 +4,7 @@ export interface DetectionResult {
   ai_probability: number;
   human_probability: number;
   verdict: 'Likely AI' | 'Likely Human' | 'Mixed Content';
+  confidence: 'Low' | 'Medium' | 'High';
   reason: string;
 }
 
@@ -20,6 +21,7 @@ export interface SimilarityResult {
   similarity: number;
   matching_segments?: MatchingSegment[];
   verdict?: string;
+  confidence?: 'Low' | 'Medium' | 'High';
   explanation: string;
 }
 

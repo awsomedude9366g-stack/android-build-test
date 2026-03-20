@@ -38,6 +38,13 @@ export default function SimilarityPage() {
       ? 'text-warning'
       : 'text-success';
 
+  const confidenceBadgeColor =
+    result?.confidence === 'High'
+      ? 'bg-success/10 text-success'
+      : result?.confidence === 'Medium'
+      ? 'bg-warning/10 text-warning'
+      : 'bg-muted text-muted-foreground';
+
   return (
     <div className="min-h-svh pb-20 px-4 pt-4">
       <button onClick={() => navigate('/')} className="flex items-center gap-1 text-muted-foreground text-sm mb-4">
@@ -68,7 +75,7 @@ export default function SimilarityPage() {
         disabled={!textA.trim() || !textB.trim() || loading}
         className="h-12 w-full bg-primary text-primary-foreground rounded-xl font-medium active:scale-[0.97] transition-transform disabled:opacity-40"
       >
-        {loading ? 'Comparing patterns…' : 'Check Similarity'}
+        {loading ? 'Comparing semantic patterns…' : 'Check Similarity'}
       </button>
 
       <AnimatePresence>
@@ -76,11 +83,38 @@ export default function SimilarityPage() {
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-6 bg-card border border-border rounded-xl p-4 shadow-resting text-center space-y-3"
+            className="mt-6 bg-card border border-border rounded-xl p-4 shadow-resting space-y-4"
           >
-            <h2 className="text-sm font-semibold text-foreground">Similarity Score</h2>
-            <div className={`text-4xl font-display ${simColor}`}>{result.similarity}%</div>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-foreground">Similarity Score</h2>
+              {result.confidence && (
+                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${confidenceBadgeColor}`}>
+                  {result.confidence} confidence
+                </span>
+              )}
+            </div>
+            <div className={`text-4xl font-display text-center ${simColor}`}>{result.similarity}%</div>
+            {result.verdict && (
+              <div className="text-center text-xs font-medium text-muted-foreground">{result.verdict}</div>
+            )}
             <p className="text-xs text-muted-foreground leading-relaxed">{result.explanation}</p>
+
+            {/* Matching segments */}
+            {result.matching_segments && result.matching_segments.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-border">
+                <h3 className="text-[11px] font-semibold text-foreground">Matching Segments</h3>
+                {result.matching_segments.slice(0, 5).map((seg, i) => (
+                  <div key={i} className="bg-secondary rounded-lg p-2.5 space-y-1">
+                    <p className="text-[10px] text-muted-foreground">
+                      <span className="font-medium text-foreground">A:</span> "{seg.text_from_A}"
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      <span className="font-medium text-foreground">B:</span> "{seg.text_from_B}"
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

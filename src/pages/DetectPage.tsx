@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Upload } from 'lucide-react';
+import { ArrowLeft, Upload, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { detectText, DetectionResult } from '@/lib/api';
@@ -50,6 +50,13 @@ export default function DetectPage() {
       ? 'text-success'
       : 'text-warning';
 
+  const confidenceBadgeColor =
+    result?.confidence === 'High'
+      ? 'bg-success/10 text-success'
+      : result?.confidence === 'Medium'
+      ? 'bg-warning/10 text-warning'
+      : 'bg-muted text-muted-foreground';
+
   return (
     <div className="min-h-svh pb-20 px-4 pt-4">
       <button onClick={() => navigate('/')} className="flex items-center gap-1 text-muted-foreground text-sm mb-4">
@@ -96,7 +103,14 @@ export default function DetectPage() {
             animate={{ opacity: 1, y: 0 }}
             className="mt-6 bg-card border border-border rounded-xl p-4 shadow-resting space-y-4"
           >
-            <h2 className="text-sm font-semibold text-foreground">Estimated AI Probability</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-foreground">Estimated AI Probability</h2>
+              {result.confidence && (
+                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${confidenceBadgeColor}`}>
+                  {result.confidence} confidence
+                </span>
+              )}
+            </div>
             <ResultGauge percentage={result.ai_probability} />
             <div className="flex justify-between text-xs">
               <span className="text-success font-mono">{result.human_probability}% Human</span>
@@ -104,8 +118,8 @@ export default function DetectPage() {
             </div>
             <div className={`text-center text-lg font-display ${verdictColor}`}>{result.verdict}</div>
             <p className="text-xs text-muted-foreground leading-relaxed">{result.reason}</p>
-            <p className="text-[10px] text-muted-foreground/60 text-center">
-              Algorithmic estimation. Use as a secondary reference.
+            <p className="text-[10px] text-muted-foreground/60 text-center flex items-center justify-center gap-1">
+              <Shield size={10} /> Algorithmic estimation. Use as a secondary reference.
             </p>
           </motion.div>
         )}

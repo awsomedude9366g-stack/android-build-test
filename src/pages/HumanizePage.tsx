@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Upload, Copy, Download } from 'lucide-react';
+import { ArrowLeft, Upload, Copy, Download, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { humanizeText, HumanizeResult } from '@/lib/api';
@@ -7,6 +7,12 @@ import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
 
 const modes = ['Simple', 'Advanced', 'Academic', 'Casual'] as const;
+const modeDescriptions: Record<string, string> = {
+  Simple: 'Conversational & easy',
+  Advanced: 'Professional & natural',
+  Academic: 'Formal but varied',
+  Casual: 'Friendly & informal',
+};
 const MAX_CHARS = 5000;
 
 export default function HumanizePage() {
@@ -16,6 +22,7 @@ export default function HumanizePage() {
   const [mode, setMode] = useState<string>('Simple');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<HumanizeResult | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleHumanize = async () => {
     if (!text.trim() || loading) return;
@@ -41,7 +48,9 @@ export default function HumanizePage() {
   const copyOutput = () => {
     if (result) {
       navigator.clipboard.writeText(result.output);
+      setCopied(true);
       toast.success('Copied to clipboard');
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -78,18 +87,19 @@ export default function HumanizePage() {
       </div>
 
       {/* Mode selector */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+      <div className="grid grid-cols-2 gap-2 mb-4">
         {modes.map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+            className={`px-3 py-2.5 rounded-xl text-left transition-all ${
               mode === m
-                ? 'bg-accent text-accent-foreground'
-                : 'bg-secondary text-muted-foreground'
+                ? 'bg-accent text-accent-foreground shadow-active'
+                : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
             }`}
           >
-            {m}
+            <span className="text-xs font-medium block">{m}</span>
+            <span className="text-[10px] opacity-70">{modeDescriptions[m]}</span>
           </button>
         ))}
       </div>
@@ -99,7 +109,7 @@ export default function HumanizePage() {
         disabled={!text.trim() || loading}
         className="h-12 w-full bg-primary text-primary-foreground rounded-xl font-medium active:scale-[0.97] transition-transform disabled:opacity-40"
       >
-        {loading ? 'Adjusting linguistic variance…' : 'Start Humanizing'}
+        {loading ? 'Rewriting with natural voice…' : 'Start Humanizing'}
       </button>
 
       <AnimatePresence>
@@ -116,7 +126,8 @@ export default function HumanizePage() {
                 onClick={copyOutput}
                 className="flex-1 h-10 bg-secondary text-foreground rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 active:scale-[0.97] transition-transform"
               >
-                <Copy size={14} /> Copy
+                {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
+                {copied ? 'Copied' : 'Copy'}
               </button>
               <button
                 onClick={downloadOutput}
