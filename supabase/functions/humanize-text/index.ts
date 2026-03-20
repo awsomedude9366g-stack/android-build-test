@@ -13,20 +13,85 @@ const modeInstructions: Record<string, string> = {
   Casual: "Write like a relaxed blog post or social media thread. Short sentences, humor welcome, personality front and center.",
 };
 
-const SYSTEM_PROMPT = (mode: string) => `You are a master human ghostwriter. Your goal is to rewrite text so it sounds authentically human — not AI-generated. Follow every rule carefully.
+const PASS1_PROMPT = (mode: string) => `You are a master human ghostwriter. Rewrite the following text so it sounds authentically human.
 
-REWRITING RULES:
-1. SENTENCE VARIETY — Mix short punchy sentences (3-8 words) with medium (10-18 words) and occasional long ones (20-30 words). Never use the same sentence length twice in a row.
-2. NATURAL VOICE — Add personality. Use "I think", "honestly", "look", "here's the thing" where appropriate. Sprinkle in contractions (don't, can't, it's, we're).
-3. IMPERFECTIONS — Include minor natural touches: starting a sentence with "And" or "But", using dashes for asides, occasional parenthetical thoughts.
-4. KILL AI MARKERS — Remove or replace: "Furthermore", "Moreover", "In conclusion", "It is worth noting", "Additionally", "It's important to note". Replace "utilize" with "use", "implement" with "set up", "facilitate" with "help", "leverage" with "use", "enhance" with "improve".
-5. EMOTIONAL TEXTURE — Add subtle emotion: surprise ("surprisingly"), conviction ("clearly"), hedging ("probably", "I'd say"), or emphasis where it fits.
-6. PARAGRAPH FLOW — Don't start every paragraph the same way. Vary openings: question, statement, short fragment, anecdote reference.
-7. PRESERVE MEANING — Keep ALL original facts, data, and core ideas intact. Change how it's said, not what's said.
+RULES:
+1. Mix short sentences (3-8 words) with medium (10-18) and long (20-30). Never two same-length sentences in a row.
+2. Use contractions naturally (don't, can't, it's, we're).
+3. Remove AI markers: "Furthermore", "Moreover", "In conclusion", "It is worth noting", "Additionally". Replace "utilize" → "use", "implement" → "set up", "facilitate" → "help", "leverage" → "use", "enhance" → "improve".
+4. Add subtle emotion and conviction where it fits.
+5. Vary paragraph openings — never start two paragraphs the same way.
+6. PRESERVE all original facts, data, and core ideas. Change how it's said, not what's said.
 
 MODE: ${modeInstructions[mode] || modeInstructions.Simple}
 
-Output ONLY the rewritten text. No preamble, no explanation, no meta-commentary.`;
+Output ONLY the rewritten text.`;
+
+const PASS2_PROMPT = `You are a structural editor. Your job is to break predictable flow in the text below.
+
+RULES:
+1. Vary sentence length aggressively — follow a long sentence with a very short one (2-5 words). Then a medium one.
+2. Add small informal transitions: "Look,", "Here's the thing —", "And honestly,", "But wait —", "Thing is,".
+3. Break any pattern where 3+ sentences follow the same rhythm or structure.
+4. Start some sentences with "And" or "But".
+5. Use dashes for asides — like this — where it feels natural.
+6. DO NOT change facts or meaning. Only restructure flow and rhythm.
+
+Output ONLY the edited text.`;
+
+const PASS3_PROMPT = `You are adding human texture to polished text. Make it feel like a real person wrote it.
+
+RULES:
+1. Ensure contractions appear naturally (don't, it's, can't, we're, they'll). If missing, add some.
+2. Add slight imperfections: an occasional parenthetical thought, a rhetorical question, a sentence fragment used for emphasis.
+3. Sprinkle in light personality: "I'd say", "probably", "honestly", "to be fair", "not gonna lie" — but sparingly.
+4. Add hedging where appropriate: "I think", "in my experience", "from what I've seen".
+5. DO NOT overdo it. 2-3 touches per paragraph max. It should feel effortless, not forced.
+6. PRESERVE all facts and meaning.
+
+Output ONLY the edited text.`;
+
+const PASS4_PROMPT = `You are a final-pass editor ensuring quality and authenticity.
+
+RULES:
+1. Scan for any remaining AI-sounding phrases and replace them with natural alternatives.
+2. Check that meaning is fully preserved from the original intent.
+3. Ensure smooth readability — no jarring transitions or awkward phrasing.
+4. Verify sentence variety exists (short, medium, long mixed throughout).
+5. Remove any repetitive words or phrases that appear too close together.
+6. Make sure the text flows like something a thoughtful human would actually write and publish.
+7. Do NOT add preamble, commentary, or explanation.
+
+Output ONLY the final polished text.`;
+
+async function callOpenAI(apiKey: string, systemPrompt: string, text: string): Promise<string> {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      temperature: 0.85,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: text },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    if (response.status === 429) throw new Error("Rate limit exceeded. Please try again later.");
+    if (response.status === 402 || response.status === 401) throw new Error("OpenAI API key is invalid or has insufficient credits.");
+    const errText = await response.text();
+    console.error("OpenAI API error:", response.status, errText);
+    throw new Error("OpenAI API error");
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content?.trim() || "";
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -45,6 +110,7 @@ serve(async (req) => {
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
 
+    // Chunk the input
     const words = text.split(/\s+/);
     const CHUNK_SIZE = 800;
     const chunks: string[] = [];
@@ -55,41 +121,19 @@ serve(async (req) => {
     const outputs: string[] = [];
 
     for (const chunk of chunks) {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o",
-          temperature: 0.85,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT(mode) },
-            { role: "user", content: chunk },
-          ],
-        }),
-      });
+      // PASS 1: Natural rewrite
+      const pass1 = await callOpenAI(OPENAI_API_KEY, PASS1_PROMPT(mode), chunk);
 
-      if (!response.ok) {
-        if (response.status === 429) {
-          return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        if (response.status === 402 || response.status === 401) {
-          return new Response(JSON.stringify({ error: "OpenAI API key is invalid or has insufficient credits." }), {
-            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        const errText = await response.text();
-        console.error("OpenAI API error:", response.status, errText);
-        throw new Error("OpenAI API error");
-      }
+      // PASS 2: Break structure
+      const pass2 = await callOpenAI(OPENAI_API_KEY, PASS2_PROMPT, pass1);
 
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (content) outputs.push(content.trim());
+      // PASS 3: Add human noise
+      const pass3 = await callOpenAI(OPENAI_API_KEY, PASS3_PROMPT, pass2);
+
+      // PASS 4: Final polish
+      const pass4 = await callOpenAI(OPENAI_API_KEY, PASS4_PROMPT, pass3);
+
+      outputs.push(pass4);
     }
 
     return new Response(
@@ -98,9 +142,11 @@ serve(async (req) => {
     );
   } catch (e) {
     console.error("humanize-text error:", e);
+    const msg = e instanceof Error ? e.message : "Unknown error";
+    const status = msg.includes("Rate limit") ? 429 : msg.includes("invalid or has insufficient") ? 402 : 500;
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: msg }),
+      { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
