@@ -7,21 +7,45 @@ const corsHeaders = {
 };
 
 const SYSTEM_PROMPT = `You are a professional semantic similarity engine. Compare two texts based on MEANING, not surface-level word matching. Consider:
-
 - Paraphrased content conveying the same ideas
 - Synonyms and equivalent expressions
 - Sentence or paragraph reordering that preserves meaning
 - Shared arguments, claims, or data points
-- Structural similarity in reasoning flow
 
-Do NOT inflate similarity just because texts share a topic. Two articles about "climate change" with different arguments should score low.
-
-Provide a confidence level:
-- "High" if the texts are long enough and you're certain
-- "Medium" if texts are moderate length or have ambiguous overlap
-- "Low" if texts are very short or unclear
+Do NOT inflate similarity just because texts share a topic.
 
 You MUST use the similarity_result tool to return your analysis.`;
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  let dot = 0, magA = 0, magB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    magA += a[i] * a[i];
+    magB += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+}
+
+async function getEmbedding(apiKey: string, text: string): Promise<number[]> {
+  const response = await fetch("https://api.openai.com/v1/embeddings", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "text-embedding-3-small",
+      input: text.slice(0, 8000),
+    }),
+  });
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error("Embedding error:", response.status, errText);
+    throw new Error("Embedding API error");
+  }
+  const data = await response.json();
+  return data.data[0].embedding;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -32,28 +56,30 @@ serve(async (req) => {
     const { textA, textB } = await req.json();
     if (!textA || !textB || typeof textA !== "string" || typeof textB !== "string") {
       return new Response(JSON.stringify({ error: "Both textA and textB are required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: `Text A:\n${textA}\n\nText B:\n${textB}` },
-        ],
-        tools: [
-          {
+    // Run embedding + GPT analysis in parallel
+    const [embeddingA, embeddingB, gptResponse] = await Promise.all([
+      getEmbedding(OPENAI_API_KEY, textA),
+      getEmbedding(OPENAI_API_KEY, textB),
+      fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: `Text A:\n${textA.slice(0, 5000)}\n\nText B:\n${textB.slice(0, 5000)}` },
+          ],
+          tools: [{
             type: "function",
             function: {
               name: "similarity_result",
@@ -75,47 +101,55 @@ serve(async (req) => {
                   },
                   verdict: { type: "string", enum: ["Low Similarity", "Moderate Similarity", "High Similarity"] },
                   confidence: { type: "string", enum: ["Low", "Medium", "High"] },
-                  reason: { type: "string", description: "Explanation based on semantic match" },
+                  reason: { type: "string" },
                 },
                 required: ["similarity_percentage", "matching_segments", "verdict", "confidence", "reason"],
                 additionalProperties: false,
               },
             },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "similarity_result" } },
+          }],
+          tool_choice: { type: "function", function: { name: "similarity_result" } },
+        }),
       }),
-    });
+    ]);
 
-    if (!response.ok) {
-      if (response.status === 429) {
+    // Compute cosine similarity from embeddings
+    const embeddingSimilarity = Math.round(cosineSimilarity(embeddingA, embeddingB) * 100);
+
+    if (!gptResponse.ok) {
+      if (gptResponse.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402 || response.status === 401) {
+      if (gptResponse.status === 402 || gptResponse.status === 401) {
         return new Response(JSON.stringify({ error: "OpenAI API key is invalid or has insufficient credits." }), {
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const errText = await response.text();
-      console.error("OpenAI API error:", response.status, errText);
       throw new Error("OpenAI API error");
     }
 
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    const gptData = await gptResponse.json();
+    const toolCall = gptData.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) throw new Error("No result from AI");
 
-    const result = JSON.parse(toolCall.function.arguments);
+    const gptResult = JSON.parse(toolCall.function.arguments);
+
+    // Blend: 70% embedding + 30% GPT reasoning
+    const finalSimilarity = Math.round(embeddingSimilarity * 0.7 + gptResult.similarity_percentage * 0.3);
+
+    const verdict = finalSimilarity >= 60 ? "High Similarity" : finalSimilarity >= 30 ? "Moderate Similarity" : "Low Similarity";
 
     return new Response(
       JSON.stringify({
-        similarity: result.similarity_percentage,
-        matching_segments: result.matching_segments || [],
-        verdict: result.verdict,
-        confidence: result.confidence || "Medium",
-        explanation: result.reason,
+        similarity: finalSimilarity,
+        embedding_similarity: embeddingSimilarity,
+        gpt_similarity: gptResult.similarity_percentage,
+        matching_segments: gptResult.matching_segments || [],
+        verdict,
+        confidence: gptResult.confidence || "Medium",
+        explanation: gptResult.reason,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

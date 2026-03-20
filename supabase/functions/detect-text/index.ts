@@ -8,41 +8,107 @@ const corsHeaders = {
 
 const SYSTEM_PROMPT = `You are an expert AI text detection engine. Your job is to estimate whether text is human-written, AI-generated, or a mix.
 
-CRITICAL RULES — read carefully:
-- Do NOT classify text as AI simply because it is well-structured, formal, or grammatically correct. Many humans write clean, organized prose.
-- Only assign high AI probability (>65%) when MULTIPLE strong AI signals appear CONSISTENTLY throughout the text.
+CRITICAL RULES:
+- Do NOT classify text as AI simply because it is well-structured, formal, or grammatically correct.
+- Only assign high AI probability (>65%) when MULTIPLE strong AI signals appear CONSISTENTLY.
 - If you see even moderate human signals, significantly reduce the AI score.
 
-AI SIGNALS (must appear repeatedly to matter):
-- Repetitive sentence structure (same length, same pattern paragraph after paragraph)
-- Generic filler transitions: "Furthermore", "Moreover", "In conclusion", "It is worth noting", "Additionally"
-- Overly neutral, hedging, "safe" tone throughout — no personality or opinion
-- Predictable paragraph openings (each paragraph starts with a topic sentence + elaboration pattern)
-- Overuse of formal vocabulary: "utilize", "facilitate", "implement", "leverage", "enhance"
-- Lack of any subtle grammatical imperfections
+AI SIGNALS (must appear repeatedly):
+- Repetitive sentence structure (same length, same pattern)
+- Generic filler transitions: "Furthermore", "Moreover", "In conclusion", "Additionally"
+- Overly neutral, hedging, "safe" tone — no personality
+- Predictable paragraph openings
+- Overuse of formal vocabulary: "utilize", "facilitate", "implement", "leverage"
 - Robotic uniformity — every sentence ~same complexity
 
-HUMAN SIGNALS (presence should LOWER AI score):
-- Personal voice, opinions, or anecdotes (I think, I believe, in my experience)
-- Sentence length variation — mix of short punchy and longer complex sentences
-- Informal phrasing, contractions (don't, can't, it's, won't, I've)
-- Subtle imperfections, colloquialisms, or conversational asides
+HUMAN SIGNALS (should LOWER AI score):
+- Personal voice, opinions, anecdotes
+- Sentence length variation — short punchy + longer complex
+- Contractions (don't, can't, it's)
+- Subtle imperfections, colloquialisms
 - Emotional language or humor
-- Unique word choices or creative phrasing
+- Unique word choices
 
-SCORING:
-0–20% → Clearly Human
-21–45% → Mostly Human  
-46–65% → Mixed / AI-assisted
-66–85% → Mostly AI
-86–100% → Clearly AI
-
-Also provide a confidence level:
-- "High" if you are very certain of your assessment
-- "Medium" if the text has ambiguous signals
-- "Low" if the text is too short or unclear to judge well
+SCORING: 0–20% Clearly Human, 21–45% Mostly Human, 46–65% Mixed, 66–85% Mostly AI, 86–100% Clearly AI
 
 You MUST use the detect_result tool to return your analysis.`;
+
+// === STATISTICAL ANALYSIS FUNCTIONS ===
+
+function computeSentenceLengthVariance(text: string): number {
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  if (sentences.length < 2) return 0;
+  const lengths = sentences.map(s => s.trim().split(/\s+/).length);
+  const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+  const variance = lengths.reduce((sum, l) => sum + Math.pow(l - mean, 2), 0) / lengths.length;
+  return variance;
+}
+
+function computeRepetitionScore(text: string): number {
+  const words = text.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(w => w.length > 3);
+  if (words.length === 0) return 0;
+  const freq: Record<string, number> = {};
+  for (const w of words) freq[w] = (freq[w] || 0) + 1;
+  const repeated = Object.values(freq).filter(c => c > 2).reduce((s, c) => s + c, 0);
+  return (repeated / words.length) * 100; // % of words that are repeated >2x
+}
+
+function computeVocabularyDiversity(text: string): number {
+  const words = text.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(w => w.length > 0);
+  if (words.length === 0) return 1;
+  const unique = new Set(words).size;
+  return unique / words.length; // type-token ratio (0-1, higher = more diverse)
+}
+
+function computeStatisticalScore(text: string): { score: number; details: { sentenceVariance: number; repetitionPct: number; vocabDiversity: number } } {
+  const sentenceVariance = computeSentenceLengthVariance(text);
+  const repetitionPct = computeRepetitionScore(text);
+  const vocabDiversity = computeVocabularyDiversity(text);
+
+  let score = 50; // start neutral
+
+  // Low sentence variance → AI signal
+  if (sentenceVariance < 10) score += 15;
+  else if (sentenceVariance < 20) score += 8;
+  else if (sentenceVariance > 50) score -= 12;
+  else if (sentenceVariance > 30) score -= 6;
+
+  // High repetition → AI signal
+  if (repetitionPct > 30) score += 12;
+  else if (repetitionPct > 20) score += 6;
+  else if (repetitionPct < 10) score -= 5;
+
+  // Low vocabulary diversity → AI signal
+  if (vocabDiversity < 0.4) score += 12;
+  else if (vocabDiversity < 0.5) score += 6;
+  else if (vocabDiversity > 0.7) score -= 10;
+  else if (vocabDiversity > 0.6) score -= 5;
+
+  return { score: Math.max(0, Math.min(100, score)), details: { sentenceVariance: Math.round(sentenceVariance * 10) / 10, repetitionPct: Math.round(repetitionPct * 10) / 10, vocabDiversity: Math.round(vocabDiversity * 100) / 100 } };
+}
+
+// === IMPROVED CHUNK AGGREGATION ===
+function aggregateScores(chunks: { score: number; wordCount: number }[]): number {
+  if (chunks.length === 0) return 50;
+  if (chunks.length === 1) return chunks[0].score;
+
+  // Remove outliers (highest and lowest) if 3+ chunks
+  let filtered = [...chunks];
+  if (filtered.length >= 3) {
+    filtered.sort((a, b) => a.score - b.score);
+    filtered = filtered.slice(1, -1); // remove min and max
+  }
+
+  // Weighted median by word count
+  filtered.sort((a, b) => a.score - b.score);
+  const totalWords = filtered.reduce((s, c) => s + c.wordCount, 0);
+  let cumWeight = 0;
+  for (const chunk of filtered) {
+    cumWeight += chunk.wordCount;
+    if (cumWeight >= totalWords / 2) return chunk.score;
+  }
+  return filtered[Math.floor(filtered.length / 2)].score;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -53,13 +119,15 @@ serve(async (req) => {
     const { text } = await req.json();
     if (!text || typeof text !== "string" || text.trim().length === 0) {
       return new Response(JSON.stringify({ error: "Text is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
+
+    // Compute statistical analysis on full text
+    const stats = computeStatisticalScore(text);
 
     const words = text.split(/\s+/);
     const CHUNK_SIZE = 800;
@@ -68,7 +136,7 @@ serve(async (req) => {
       chunks.push(words.slice(i, i + CHUNK_SIZE).join(" "));
     }
 
-    const results: { ai_probability: number; confidence: string; reason: string }[] = [];
+    const gptResults: { ai_probability: number; confidence: string; reason: string; wordCount: number }[] = [];
 
     for (const chunk of chunks) {
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -83,27 +151,25 @@ serve(async (req) => {
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: chunk },
           ],
-          tools: [
-            {
-              type: "function",
-              function: {
-                name: "detect_result",
-                description: "Return AI detection analysis result",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    ai_probability: { type: "number", description: "AI probability 0-100" },
-                    human_probability: { type: "number", description: "Human probability 0-100" },
-                    verdict: { type: "string", enum: ["Likely AI", "Likely Human", "Mixed Content"] },
-                    confidence: { type: "string", enum: ["Low", "Medium", "High"] },
-                    reason: { type: "string", description: "1-2 sentence explanation focusing on specific signals found" },
-                  },
-                  required: ["ai_probability", "human_probability", "verdict", "confidence", "reason"],
-                  additionalProperties: false,
+          tools: [{
+            type: "function",
+            function: {
+              name: "detect_result",
+              description: "Return AI detection analysis result",
+              parameters: {
+                type: "object",
+                properties: {
+                  ai_probability: { type: "number", description: "AI probability 0-100" },
+                  human_probability: { type: "number", description: "Human probability 0-100" },
+                  verdict: { type: "string", enum: ["Likely AI", "Likely Human", "Mixed Content"] },
+                  confidence: { type: "string", enum: ["Low", "Medium", "High"] },
+                  reason: { type: "string", description: "1-2 sentence explanation" },
                 },
+                required: ["ai_probability", "human_probability", "verdict", "confidence", "reason"],
+                additionalProperties: false,
               },
             },
-          ],
+          }],
           tool_choice: { type: "function", function: { name: "detect_result" } },
         }),
       });
@@ -128,52 +194,60 @@ serve(async (req) => {
       const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
       if (toolCall) {
         const parsed = JSON.parse(toolCall.function.arguments);
-        results.push(parsed);
+        gptResults.push({ ...parsed, wordCount: chunk.split(/\s+/).length });
       }
     }
 
-    if (results.length === 0) throw new Error("No results from AI analysis");
+    if (gptResults.length === 0) throw new Error("No results from AI analysis");
 
-    // Aggregate scores
-    let avgAi = Math.round(results.reduce((s, r) => s + r.ai_probability, 0) / results.length);
+    // Aggregate GPT scores using improved method
+    const gptScore = aggregateScores(gptResults.map(r => ({ score: r.ai_probability, wordCount: r.wordCount })));
 
-    // === POST-PROCESSING SCORE ADJUSTMENTS ===
+    // === COMBINE: GPT score + Statistical score ===
+    let finalScore = Math.round((gptScore + stats.score) / 2);
+
+    // === POST-PROCESSING ADJUSTMENTS ===
     const lowerText = text.toLowerCase();
 
-    // Personal tone indicators
     const personalPatterns = /\b(i think|i believe|in my experience|i feel|i've seen|we think|my opinion|personally)\b/gi;
     const personalMatches = (lowerText.match(personalPatterns) || []).length;
-    if (personalMatches >= 1) avgAi = Math.max(0, avgAi - 5 * Math.min(personalMatches, 4));
+    if (personalMatches >= 1) finalScore = Math.max(0, finalScore - 5 * Math.min(personalMatches, 4));
 
-    // First person pronouns
     const firstPersonCount = (lowerText.match(/\b(i|we|my|our|me|us)\b/g) || []).length;
-    const wordCount = words.length;
-    const firstPersonRatio = firstPersonCount / wordCount;
-    if (firstPersonRatio > 0.02) avgAi = Math.max(0, avgAi - 8);
+    const firstPersonRatio = firstPersonCount / words.length;
+    if (firstPersonRatio > 0.02) finalScore = Math.max(0, finalScore - 8);
 
-    // Informal language / contractions
     const informalPatterns = /\b(don't|can't|won't|isn't|aren't|couldn't|shouldn't|wouldn't|it's|i'm|i've|we're|they're|that's|what's|here's|there's|gonna|gotta|wanna|kinda|sorta)\b/gi;
     const informalMatches = (lowerText.match(informalPatterns) || []).length;
-    if (informalMatches >= 2) avgAi = Math.max(0, avgAi - 5 * Math.min(informalMatches, 3));
+    if (informalMatches >= 2) finalScore = Math.max(0, finalScore - 5 * Math.min(informalMatches, 3));
 
-    // Clamp
-    avgAi = Math.max(0, Math.min(100, Math.round(avgAi)));
-    const avgHuman = 100 - avgAi;
+    // Statistical adjustments
+    if (stats.details.sentenceVariance > 40) finalScore = Math.max(0, finalScore - 5);
+    if (stats.details.repetitionPct > 25) finalScore = Math.min(100, finalScore + 5);
 
-    const verdict = avgAi >= 66 ? "Likely AI" : avgAi <= 45 ? "Likely Human" : "Mixed Content";
+    finalScore = Math.max(0, Math.min(100, Math.round(finalScore)));
+    const humanScore = 100 - finalScore;
 
-    // Aggregate confidence
-    const confidenceLevels = results.map(r => r.confidence || "Medium");
+    const verdict = finalScore >= 66 ? "Likely AI" : finalScore <= 45 ? "Likely Human" : "Mixed Content";
+
+    const confidenceLevels = gptResults.map(r => r.confidence || "Medium");
     const confMap: Record<string, number> = { Low: 1, Medium: 2, High: 3 };
     const avgConf = confidenceLevels.reduce((s, c) => s + (confMap[c] || 2), 0) / confidenceLevels.length;
     const confidence = avgConf >= 2.5 ? "High" : avgConf >= 1.5 ? "Medium" : "Low";
 
-    const reason = results.length === 1
-      ? results[0].reason
-      : `Averaged across ${results.length} text segments. ${results[0].reason}`;
+    const reason = gptResults.length === 1
+      ? gptResults[0].reason
+      : `Analyzed ${gptResults.length} text segments. ${gptResults[0].reason}`;
 
     return new Response(
-      JSON.stringify({ ai_probability: avgAi, human_probability: avgHuman, verdict, confidence, reason }),
+      JSON.stringify({
+        ai_probability: finalScore,
+        human_probability: humanScore,
+        verdict,
+        confidence,
+        reason,
+        statistical_details: stats.details,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {

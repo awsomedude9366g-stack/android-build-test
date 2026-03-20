@@ -1,11 +1,18 @@
 import { supabase } from '@/integrations/supabase/client';
 
+export interface StatisticalDetails {
+  sentenceVariance: number;
+  repetitionPct: number;
+  vocabDiversity: number;
+}
+
 export interface DetectionResult {
   ai_probability: number;
   human_probability: number;
   verdict: 'Likely AI' | 'Likely Human' | 'Mixed Content';
   confidence: 'Low' | 'Medium' | 'High';
   reason: string;
+  statistical_details?: StatisticalDetails;
 }
 
 export interface HumanizeResult {
@@ -19,6 +26,8 @@ export interface MatchingSegment {
 
 export interface SimilarityResult {
   similarity: number;
+  embedding_similarity?: number;
+  gpt_similarity?: number;
   matching_segments?: MatchingSegment[];
   verdict?: string;
   confidence?: 'Low' | 'Medium' | 'High';
