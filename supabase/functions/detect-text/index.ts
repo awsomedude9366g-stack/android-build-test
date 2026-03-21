@@ -139,54 +139,63 @@ serve(async (req) => {
     const gptResults: { ai_probability: number; confidence: string; reason: string; wordCount: number }[] = [];
 
     for (const chunk of chunks) {
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: chunk },
-          ],
-          tools: [{
-            type: "function",
-            function: {
-              name: "detect_result",
-              description: "Return AI detection analysis result",
-              parameters: {
-                type: "object",
-                properties: {
-                  ai_probability: { type: "number", description: "AI probability 0-100" },
-                  human_probability: { type: "number", description: "Human probability 0-100" },
-                  verdict: { type: "string", enum: ["Likely AI", "Likely Human", "Mixed Content"] },
-                  confidence: { type: "string", enum: ["Low", "Medium", "High"] },
-                  reason: { type: "string", description: "1-2 sentence explanation" },
+      let response: Response | null = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              { role: "system", content: SYSTEM_PROMPT },
+              { role: "user", content: chunk },
+            ],
+            tools: [{
+              type: "function",
+              function: {
+                name: "detect_result",
+                description: "Return AI detection analysis result",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    ai_probability: { type: "number", description: "AI probability 0-100" },
+                    human_probability: { type: "number", description: "Human probability 0-100" },
+                    verdict: { type: "string", enum: ["Likely AI", "Likely Human", "Mixed Content"] },
+                    confidence: { type: "string", enum: ["Low", "Medium", "High"] },
+                    reason: { type: "string", description: "1-2 sentence explanation" },
+                  },
+                  required: ["ai_probability", "human_probability", "verdict", "confidence", "reason"],
+                  additionalProperties: false,
                 },
-                required: ["ai_probability", "human_probability", "verdict", "confidence", "reason"],
-                additionalProperties: false,
               },
-            },
-          }],
-          tool_choice: { type: "function", function: { name: "detect_result" } },
-        }),
-      });
+            }],
+            tool_choice: { type: "function", function: { name: "detect_result" } },
+          }),
+        });
 
-      if (!response.ok) {
-        if (response.status === 429) {
-          return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
+        if (response.status === 429 && attempt < 2) {
+          await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+          continue;
+        }
+        break;
+      }
+
+      if (!response || !response.ok) {
+        if (response?.status === 429) {
+          return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a few seconds." }), {
             status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        if (response.status === 402) {
+        if (response?.status === 402) {
           return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds in Settings > Workspace > Usage." }), {
             status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        const errText = await response.text();
-        console.error("AI Gateway error:", response.status, errText);
+        const errText = response ? await response.text() : "No response";
+        console.error("AI Gateway error:", response?.status, errText);
         throw new Error("AI Gateway error");
       }
 
