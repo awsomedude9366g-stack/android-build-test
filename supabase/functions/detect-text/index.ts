@@ -180,14 +180,14 @@ serve(async (req) => {
             status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        if (response.status === 402 || response.status === 401) {
-          return new Response(JSON.stringify({ error: "OpenAI API key is invalid or has insufficient credits." }), {
+        if (response.status === 402) {
+          return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds in Settings > Workspace > Usage." }), {
             status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
         const errText = await response.text();
-        console.error("OpenAI API error:", response.status, errText);
-        throw new Error("OpenAI API error");
+        console.error("AI Gateway error:", response.status, errText);
+        throw new Error("AI Gateway error");
       }
 
       const data = await response.json();

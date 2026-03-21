@@ -121,16 +121,16 @@ serve(async (req) => {
 
     for (const chunk of chunks) {
       // PASS 1: Natural rewrite
-      const pass1 = await callOpenAI(OPENAI_API_KEY, PASS1_PROMPT(mode), chunk);
+      const pass1 = await callAI(LOVABLE_API_KEY, PASS1_PROMPT(mode), chunk);
 
       // PASS 2: Break structure
-      const pass2 = await callOpenAI(OPENAI_API_KEY, PASS2_PROMPT, pass1);
+      const pass2 = await callAI(LOVABLE_API_KEY, PASS2_PROMPT, pass1);
 
       // PASS 3: Add human noise
-      const pass3 = await callOpenAI(OPENAI_API_KEY, PASS3_PROMPT, pass2);
+      const pass3 = await callAI(LOVABLE_API_KEY, PASS3_PROMPT, pass2);
 
       // PASS 4: Final polish
-      const pass4 = await callOpenAI(OPENAI_API_KEY, PASS4_PROMPT, pass3);
+      const pass4 = await callAI(LOVABLE_API_KEY, PASS4_PROMPT, pass3);
 
       outputs.push(pass4);
     }
