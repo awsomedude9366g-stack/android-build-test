@@ -157,16 +157,11 @@ export default function SimilarityPage() {
             )}
 
             {/* Score breakdown */}
-            {result.embedding_similarity != null && result.gpt_similarity != null && (
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-secondary/50 rounded-xl p-3 text-center">
-                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider font-medium">Embedding</div>
-                  <div className="text-base font-mono font-bold text-foreground mt-1">{result.embedding_similarity}%</div>
-                </div>
-                <div className="bg-secondary/50 rounded-xl p-3 text-center">
-                  <div className="text-[9px] text-muted-foreground uppercase tracking-wider font-medium">Reasoning</div>
-                  <div className="text-base font-mono font-bold text-foreground mt-1">{result.gpt_similarity}%</div>
-                </div>
+            {/* Confidence */}
+            {result.confidence && (
+              <div className="bg-secondary/50 rounded-xl p-3 text-center">
+                <div className="text-[9px] text-muted-foreground uppercase tracking-wider font-medium">Confidence</div>
+                <div className="text-base font-mono font-bold text-foreground mt-1">{result.confidence}</div>
               </div>
             )}
 

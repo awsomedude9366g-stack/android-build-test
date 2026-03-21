@@ -64,16 +64,15 @@ RULES:
 
 Output ONLY the final polished text.`;
 
-async function callOpenAI(apiKey: string, systemPrompt: string, text: string): Promise<string> {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+async function callAI(apiKey: string, systemPrompt: string, text: string): Promise<string> {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o",
-      temperature: 0.85,
+      model: "google/gemini-2.5-flash",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: text },
@@ -83,10 +82,10 @@ async function callOpenAI(apiKey: string, systemPrompt: string, text: string): P
 
   if (!response.ok) {
     if (response.status === 429) throw new Error("Rate limit exceeded. Please try again later.");
-    if (response.status === 402 || response.status === 401) throw new Error("OpenAI API key is invalid or has insufficient credits.");
+    if (response.status === 402) throw new Error("AI credits exhausted. Please add funds in Settings > Workspace > Usage.");
     const errText = await response.text();
-    console.error("OpenAI API error:", response.status, errText);
-    throw new Error("OpenAI API error");
+    console.error("AI Gateway error:", response.status, errText);
+    throw new Error("AI Gateway error");
   }
 
   const data = await response.json();
@@ -107,8 +106,8 @@ serve(async (req) => {
       });
     }
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     // Chunk the input
     const words = text.split(/\s+/);
@@ -122,16 +121,16 @@ serve(async (req) => {
 
     for (const chunk of chunks) {
       // PASS 1: Natural rewrite
-      const pass1 = await callOpenAI(OPENAI_API_KEY, PASS1_PROMPT(mode), chunk);
+      const pass1 = await callAI(LOVABLE_API_KEY, PASS1_PROMPT(mode), chunk);
 
       // PASS 2: Break structure
-      const pass2 = await callOpenAI(OPENAI_API_KEY, PASS2_PROMPT, pass1);
+      const pass2 = await callAI(LOVABLE_API_KEY, PASS2_PROMPT, pass1);
 
       // PASS 3: Add human noise
-      const pass3 = await callOpenAI(OPENAI_API_KEY, PASS3_PROMPT, pass2);
+      const pass3 = await callAI(LOVABLE_API_KEY, PASS3_PROMPT, pass2);
 
       // PASS 4: Final polish
-      const pass4 = await callOpenAI(OPENAI_API_KEY, PASS4_PROMPT, pass3);
+      const pass4 = await callAI(LOVABLE_API_KEY, PASS4_PROMPT, pass3);
 
       outputs.push(pass4);
     }

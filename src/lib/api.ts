@@ -26,8 +26,6 @@ export interface MatchingSegment {
 
 export interface SimilarityResult {
   similarity: number;
-  embedding_similarity?: number;
-  gpt_similarity?: number;
   matching_segments?: MatchingSegment[];
   verdict?: string;
   confidence?: 'Low' | 'Medium' | 'High';
