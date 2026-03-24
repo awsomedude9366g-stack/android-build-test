@@ -1,67 +1,43 @@
 import { useState } from 'react';
-import { ArrowLeft, Upload, Copy, Download, Check, ArrowLeftRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Copy, Download, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { humanizeText, HumanizeResult, detectText } from '@/lib/api';
-import { useAppStore } from '@/lib/store';
+import { humanizeText, HumanizeResult } from '@/lib/api';
 import { toast } from 'sonner';
 
-const modes = ['Simple', 'Advanced', 'Academic', 'Casual'] as const;
-const modeDescriptions: Record<string, string> = {
-  Simple: 'Conversational & easy',
-  Advanced: 'Professional & natural',
-  Academic: 'Formal but varied',
-  Casual: 'Friendly & informal',
+const modes = ['natural', 'academic', 'casual', 'creative', 'simple'] as const;
+const intensities = ['light', 'medium', 'heavy'] as const;
+
+const intensityDesc: Record<string, string> = {
+  light: 'Fix obvious AI patterns only',
+  medium: 'Restructure and vary significantly',
+  heavy: 'Full rewrite with natural imperfections',
 };
+
 const MAX_CHARS = 5000;
 
 export default function HumanizePage() {
-  const navigate = useNavigate();
-  const addHistory = useAppStore((s) => s.addHistory);
   const [text, setText] = useState('');
-  const [mode, setMode] = useState<string>('Simple');
+  const [mode, setMode] = useState<string>('natural');
+  const [intensity, setIntensity] = useState<string>('medium');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<HumanizeResult | null>(null);
   const [copied, setCopied] = useState(false);
-  const [showComparison, setShowComparison] = useState(false);
-  const [humanScoreImproved, setHumanScoreImproved] = useState<number | null>(null);
-  const [scoringInProgress, setScoringInProgress] = useState(false);
+
+  const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const outputWordCount = result?.output.trim() ? result.output.trim().split(/\s+/).length : 0;
 
   const handleHumanize = async () => {
     if (!text.trim() || loading) return;
     setResult(null);
-    setHumanScoreImproved(null);
-    setShowComparison(false);
     setLoading(true);
     try {
-      const res = await humanizeText(text.slice(0, MAX_CHARS), mode);
+      const res = await humanizeText(text.slice(0, MAX_CHARS), mode, intensity);
       setResult(res);
-      addHistory({ type: 'humanize', input: text.slice(0, 200), result: res });
-
-      setScoringInProgress(true);
-      try {
-        const [beforeScore, afterScore] = await Promise.all([
-          detectText(text.slice(0, MAX_CHARS)),
-          detectText(res.output.slice(0, MAX_CHARS)),
-        ]);
-        const improvement = beforeScore.ai_probability - afterScore.ai_probability;
-        setHumanScoreImproved(Math.max(0, improvement));
-      } catch {
-        // silent
-      } finally {
-        setScoringInProgress(false);
-      }
     } catch (err: any) {
       toast.error(err?.message || 'Humanization failed.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.type === 'text/plain') setText(await file.text());
   };
 
   const copyOutput = () => {
@@ -83,158 +59,139 @@ export default function HumanizePage() {
   };
 
   return (
-    <div className="min-h-svh pb-24 px-5 pt-6">
-      <motion.button
-        initial={{ opacity: 0, x: -8 }}
-        animate={{ opacity: 1, x: 0 }}
-        onClick={() => navigate('/')}
-        className="flex items-center gap-1.5 text-muted-foreground text-sm mb-6 active:scale-[0.97] transition-transform"
-      >
-        <ArrowLeft size={16} strokeWidth={1.8} /> Back
-      </motion.button>
+    <div>
+      {/* Controls */}
+      <div className="space-y-4 mb-5">
+        {/* Mode selector */}
+        <div>
+          <span className="text-xs font-semibold text-foreground mb-2 block">Mode:</span>
+          <div className="flex flex-wrap gap-2">
+            {modes.map((m) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all capitalize ${
+                  mode === m
+                    ? 'bg-success/10 border-success/30 text-success'
+                    : 'bg-card border-border text-muted-foreground hover:border-border hover:text-foreground'
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <motion.h1
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="font-display text-xl text-foreground mb-5 tracking-tight"
-      >
-        Text Humanizer
-      </motion.h1>
-
-      <motion.textarea
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="Paste text to humanize…"
-        className="w-full min-h-[180px] p-4 bg-card border border-border rounded-2xl text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary/40 focus:shadow-glow outline-none resize-none transition-all duration-300"
-        maxLength={MAX_CHARS}
-      />
-
-      <div className="flex items-center justify-between mt-2.5 mb-4">
-        <span className="text-[10px] text-muted-foreground font-mono">{text.length}/{MAX_CHARS}</span>
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer active:scale-[0.97] transition-transform hover:text-foreground">
-          <Upload size={14} strokeWidth={1.8} /> Upload .txt
-          <input type="file" accept=".txt" className="hidden" onChange={handleFile} />
-        </label>
+        {/* Intensity selector */}
+        <div>
+          <span className="text-xs font-semibold text-foreground mb-2 block">Intensity:</span>
+          <div className="flex items-center gap-2">
+            <div className="flex gap-2">
+              {intensities.map((int) => (
+                <button
+                  key={int}
+                  onClick={() => setIntensity(int)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all capitalize ${
+                    intensity === int
+                      ? 'bg-primary/10 border-primary/30 text-primary'
+                      : 'bg-card border-border text-muted-foreground hover:border-border hover:text-foreground'
+                  }`}
+                >
+                  {int}
+                </button>
+              ))}
+            </div>
+            <span className="text-[10px] text-muted-foreground ml-2 hidden sm:inline">{intensityDesc[intensity]}</span>
+          </div>
+        </div>
       </div>
 
-      {/* Mode selector */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-        className="grid grid-cols-2 gap-2 mb-5"
-      >
-        {modes.map((m) => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            className={`px-3.5 py-3 rounded-xl text-left transition-all duration-200 active:scale-[0.97] border ${
-              mode === m
-                ? 'bg-primary/10 border-primary/30 text-foreground shadow-glow'
-                : 'bg-card border-border text-muted-foreground hover:border-border hover:bg-secondary'
-            }`}
-          >
-            <span className="text-xs font-semibold block tracking-tight">{m}</span>
-            <span className="text-[10px] opacity-60 mt-0.5 block">{modeDescriptions[m]}</span>
-          </button>
-        ))}
-      </motion.div>
+      {/* Two Column Layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Left - Original */}
+        <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <span className="text-xs font-semibold text-foreground">Original (AI) Text</span>
+            <span className="text-[11px] font-mono text-muted-foreground">{wordCount}w</span>
+          </div>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Paste AI-generated text here..."
+            className="w-full min-h-[240px] p-4 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none resize-none"
+            maxLength={MAX_CHARS}
+          />
+          <div className="flex items-center justify-end px-4 py-3 border-t border-border">
+            <button
+              onClick={handleHumanize}
+              disabled={!text.trim() || loading}
+              className="bg-success text-success-foreground text-xs font-semibold px-5 py-2 rounded-lg disabled:opacity-30 transition-all hover:-translate-y-px hover:shadow-card-hover active:translate-y-0"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 border-2 border-success-foreground/30 border-t-success-foreground rounded-full animate-spin" />
+                  Rewriting…
+                </span>
+              ) : '✦ Humanize'}
+            </button>
+          </div>
+        </div>
 
-      <motion.button
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        whileTap={{ scale: 0.97 }}
-        onClick={handleHumanize}
-        disabled={!text.trim() || loading}
-        className="w-full bg-primary text-primary-foreground rounded-2xl font-semibold text-sm tracking-tight disabled:opacity-30 transition-all duration-200 hover:shadow-glow"
-        style={{ height: '52px' }}
-      >
-        {loading ? (
-          <span className="flex items-center justify-center gap-2">
-            <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-            Rewriting…
-          </span>
-        ) : 'Start Humanizing'}
-      </motion.button>
+        {/* Right - Output */}
+        <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <span className="text-xs font-semibold text-foreground">Humanized Output</span>
+            {result && (
+              <button
+                onClick={copyOutput}
+                className="flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-primary/80 transition-colors"
+              >
+                {copied ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            )}
+          </div>
+          <div className="min-h-[240px] p-4">
+            {result ? (
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-mono">{result.output}</p>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-muted-foreground/40">
+                <span className="text-3xl mb-2">✦</span>
+                <span className="text-xs">Humanized text will appear here</span>
+              </div>
+            )}
+          </div>
+          {result && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+              <span className="text-[10px] font-mono text-muted-foreground">
+                Before: {wordCount}w · After: {outputWordCount}w · Δ {outputWordCount - wordCount > 0 ? '+' : ''}{outputWordCount - wordCount}w
+              </span>
+              <button
+                onClick={downloadOutput}
+                className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Download size={12} /> Save
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
+      {/* Tips */}
       <AnimatePresence>
         {result && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-6 bg-card border border-border rounded-2xl p-5 shadow-resting space-y-4"
+            transition={{ delay: 0.2 }}
+            className="mt-5 space-y-2"
           >
-            {/* Score improvement */}
-            {humanScoreImproved !== null && humanScoreImproved > 0 && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center justify-center gap-2 bg-success/10 text-success rounded-xl py-2.5 text-xs font-semibold"
-              >
-                <Check size={14} strokeWidth={2.5} />
-                Human score improved by {humanScoreImproved}%
-              </motion.div>
-            )}
-            {scoringInProgress && (
-              <div className="flex items-center justify-center gap-2 bg-secondary rounded-xl py-2.5 text-xs text-muted-foreground">
-                <div className="w-3.5 h-3.5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
-                Measuring improvement…
+            {['Run the output through AI Detector to verify it passes', 'Review for factual accuracy — meaning is preserved but phrasing changes', 'Add your own personal touches for maximum authenticity'].map((tip, i) => (
+              <div key={i} className="flex gap-3 items-start border-l-2 border-primary pl-3 py-1">
+                <span className="text-[10px] font-mono font-bold text-primary mt-0.5">{String(i + 1).padStart(2, '0')}</span>
+                <p className="text-xs text-foreground leading-relaxed">{tip}</p>
               </div>
-            )}
-
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground tracking-tight">Humanized Output</h2>
-              <button
-                onClick={() => setShowComparison(!showComparison)}
-                className="flex items-center gap-1.5 text-[10px] font-semibold text-primary active:scale-[0.97] transition-transform"
-              >
-                <ArrowLeftRight size={12} strokeWidth={2} />
-                {showComparison ? 'Output' : 'Compare'}
-              </button>
-            </div>
-
-            {showComparison ? (
-              <div className="space-y-3">
-                <div>
-                  <span className="text-[10px] font-semibold text-muted-foreground mb-1.5 block uppercase tracking-wider">Before</span>
-                  <div className="bg-destructive/5 border border-destructive/10 rounded-xl p-3.5 text-xs text-foreground leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto">
-                    {text}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-[10px] font-semibold text-muted-foreground mb-1.5 block uppercase tracking-wider">After</span>
-                  <div className="bg-success/5 border border-success/10 rounded-xl p-3.5 text-xs text-foreground leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto">
-                    {result.output}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">{result.output}</p>
-            )}
-
-            <div className="flex gap-2">
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={copyOutput}
-                className="flex-1 h-11 bg-secondary text-foreground rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors hover:bg-secondary/80"
-              >
-                {copied ? <Check size={14} className="text-success" strokeWidth={2.5} /> : <Copy size={14} strokeWidth={1.8} />}
-                {copied ? 'Copied' : 'Copy'}
-              </motion.button>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={downloadOutput}
-                className="flex-1 h-11 bg-secondary text-foreground rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors hover:bg-secondary/80"
-              >
-                <Download size={14} strokeWidth={1.8} /> Download
-              </motion.button>
-            </div>
+            ))}
           </motion.div>
         )}
       </AnimatePresence>

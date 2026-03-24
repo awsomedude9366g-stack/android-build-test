@@ -1,21 +1,18 @@
 import { useState } from 'react';
-import { ArrowLeft, Columns2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { checkSimilarity, SimilarityResult } from '@/lib/api';
-import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
 
 const MAX_CHARS = 5000;
 
 export default function SimilarityPage() {
-  const navigate = useNavigate();
-  const addHistory = useAppStore((s) => s.addHistory);
   const [textA, setTextA] = useState('');
   const [textB, setTextB] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SimilarityResult | null>(null);
-  const [sideBySide, setSideBySide] = useState(false);
+
+  const wordCountA = textA.trim() ? textA.trim().split(/\s+/).length : 0;
+  const wordCountB = textB.trim() ? textB.trim().split(/\s+/).length : 0;
 
   const handleCheck = async () => {
     if (!textA.trim() || !textB.trim() || loading) return;
@@ -24,7 +21,6 @@ export default function SimilarityPage() {
     try {
       const res = await checkSimilarity(textA.slice(0, MAX_CHARS), textB.slice(0, MAX_CHARS));
       setResult(res);
-      addHistory({ type: 'similarity', input: textA.slice(0, 100), inputB: textB.slice(0, 100), result: res });
     } catch (err: any) {
       toast.error(err?.message || 'Similarity check failed.');
     } finally {
@@ -32,179 +28,225 @@ export default function SimilarityPage() {
     }
   };
 
-  const simColor =
-    result && result.similarity > 60
-      ? 'text-destructive'
-      : result && result.similarity > 30
-      ? 'text-warning'
-      : 'text-success';
+  const overallScore = result ? Math.round((result.semantic_similarity + result.structural_similarity + result.idea_overlap) / 3) : 0;
+  const scoreColor = overallScore < 40 ? 'hsl(var(--success))' : overallScore < 70 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))';
 
-  const simBarColor =
-    result && result.similarity > 60
-      ? 'bg-destructive'
-      : result && result.similarity > 30
-      ? 'bg-warning'
-      : 'bg-success';
+  const riskColor = (risk: string) =>
+    risk === 'HIGH' ? 'bg-destructive/10 text-destructive' : risk === 'MEDIUM' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success';
 
-  const confidenceBadgeColor =
-    result?.confidence === 'High'
-      ? 'bg-success/10 text-success'
-      : result?.confidence === 'Medium'
-      ? 'bg-warning/10 text-warning'
-      : 'bg-secondary text-muted-foreground';
+  const typeColor = (type: string) =>
+    type === 'exact' ? 'bg-destructive/10 text-destructive' : type === 'paraphrase' ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary';
+
+  // SVG gauge
+  const radius = 50;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (overallScore / 100) * circumference;
 
   return (
-    <div className="min-h-svh pb-24 px-5 pt-6">
-      <motion.button
-        initial={{ opacity: 0, x: -8 }}
-        animate={{ opacity: 1, x: 0 }}
-        onClick={() => navigate('/')}
-        className="flex items-center gap-1.5 text-muted-foreground text-sm mb-6 active:scale-[0.97] transition-transform"
-      >
-        <ArrowLeft size={16} strokeWidth={1.8} /> Back
-      </motion.button>
+    <div>
+      {/* Two Column Input */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <span className="text-xs font-semibold text-foreground">Text A</span>
+            <span className="text-[11px] font-mono text-muted-foreground">{wordCountA}w</span>
+          </div>
+          <textarea
+            value={textA}
+            onChange={(e) => setTextA(e.target.value)}
+            placeholder="Paste first text…"
+            className="w-full min-h-[180px] p-4 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none resize-none"
+            maxLength={MAX_CHARS}
+          />
+        </div>
+        <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <span className="text-xs font-semibold text-foreground">Text B</span>
+            <span className="text-[11px] font-mono text-muted-foreground">{wordCountB}w</span>
+          </div>
+          <textarea
+            value={textB}
+            onChange={(e) => setTextB(e.target.value)}
+            placeholder="Paste second text…"
+            className="w-full min-h-[180px] p-4 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none resize-none"
+            maxLength={MAX_CHARS}
+          />
+        </div>
+      </div>
 
-      <motion.h1
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="font-display text-xl text-foreground mb-5 tracking-tight"
-      >
-        Similarity Checker
-      </motion.h1>
+      {/* Action Bar */}
+      <div className="flex items-center justify-end gap-3 mt-4">
+        {(textA || textB) && (
+          <button
+            onClick={() => { setTextA(''); setTextB(''); setResult(null); }}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5"
+          >
+            Clear All
+          </button>
+        )}
+        <button
+          onClick={handleCheck}
+          disabled={!textA.trim() || !textB.trim() || loading}
+          className="bg-primary text-primary-foreground text-xs font-semibold px-5 py-2 rounded-lg disabled:opacity-30 transition-all hover:-translate-y-px hover:shadow-card-hover active:translate-y-0"
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <span className="w-3.5 h-3.5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+              Comparing…
+            </span>
+          ) : '⇄ Compare'}
+        </button>
+      </div>
 
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <label className="text-[10px] font-semibold text-muted-foreground mb-1.5 block uppercase tracking-wider">Text A</label>
-        <textarea
-          value={textA}
-          onChange={(e) => setTextA(e.target.value)}
-          placeholder="Paste first text…"
-          className="w-full min-h-[120px] p-4 bg-card border border-border rounded-2xl text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary/40 focus:shadow-glow outline-none resize-none transition-all duration-300 mb-4"
-          maxLength={MAX_CHARS}
-        />
-      </motion.div>
-
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-        <label className="text-[10px] font-semibold text-muted-foreground mb-1.5 block uppercase tracking-wider">Text B</label>
-        <textarea
-          value={textB}
-          onChange={(e) => setTextB(e.target.value)}
-          placeholder="Paste second text…"
-          className="w-full min-h-[120px] p-4 bg-card border border-border rounded-2xl text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary/40 focus:shadow-glow outline-none resize-none transition-all duration-300 mb-5"
-          maxLength={MAX_CHARS}
-        />
-      </motion.div>
-
-      <motion.button
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        whileTap={{ scale: 0.97 }}
-        onClick={handleCheck}
-        disabled={!textA.trim() || !textB.trim() || loading}
-        className="w-full bg-primary text-primary-foreground rounded-2xl font-semibold text-sm tracking-tight disabled:opacity-30 transition-all duration-200 hover:shadow-glow"
-        style={{ height: '52px' }}
-      >
-        {loading ? (
-          <span className="flex items-center justify-center gap-2">
-            <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-            Comparing…
-          </span>
-        ) : 'Check Similarity'}
-      </motion.button>
-
+      {/* Results */}
       <AnimatePresence>
         {result && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-6 bg-card border border-border rounded-2xl p-5 shadow-resting space-y-5"
+            transition={{ duration: 0.3 }}
+            className="mt-6 space-y-4"
           >
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground tracking-tight">Similarity Score</h2>
-              {result.confidence && (
-                <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${confidenceBadgeColor}`}>
-                  {result.confidence}
-                </span>
-              )}
-            </div>
-
-            {/* Big score */}
-            <div className={`text-5xl font-mono font-bold text-center py-2 ${simColor}`}>
-              {result.similarity}%
-            </div>
-
-            {/* Bar */}
-            <div className="space-y-1.5">
-              <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${result.similarity}%` }}
-                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                  className={`h-full rounded-full ${simBarColor}`}
-                />
-              </div>
-              <div className="flex justify-between text-[9px] text-muted-foreground/50 font-mono">
-                <span>Unique</span>
-                <span>Identical</span>
-              </div>
-            </div>
-
-            {result.verdict && (
-              <div className="text-center text-xs font-semibold text-muted-foreground">{result.verdict}</div>
-            )}
-
-            {/* Score breakdown */}
-            {/* Confidence */}
-            {result.confidence && (
-              <div className="bg-secondary/50 rounded-xl p-3 text-center">
-                <div className="text-[9px] text-muted-foreground uppercase tracking-wider font-medium">Confidence</div>
-                <div className="text-base font-mono font-bold text-foreground mt-1">{result.confidence}</div>
-              </div>
-            )}
-
-            <p className="text-xs text-muted-foreground leading-relaxed">{result.explanation}</p>
-
-            {/* Matching segments */}
-            {result.matching_segments && result.matching_segments.length > 0 && (
-              <div className="space-y-3 pt-3 border-t border-border">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-[11px] font-semibold text-foreground">Matched Segments</h3>
-                  <button
-                    onClick={() => setSideBySide(!sideBySide)}
-                    className="flex items-center gap-1 text-[10px] font-semibold text-primary active:scale-[0.97] transition-transform"
-                  >
-                    <Columns2 size={12} strokeWidth={2} />
-                    {sideBySide ? 'Stack' : 'Side by side'}
-                  </button>
+            {/* Score Display */}
+            <div className="bg-card border border-border rounded-xl p-5 shadow-card flex flex-col sm:flex-row items-center gap-6">
+              {/* SVG Circle */}
+              <div className="relative w-32 h-32 flex-shrink-0">
+                <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+                  <circle cx="60" cy="60" r={radius} fill="none" stroke="hsl(var(--secondary))" strokeWidth="8" />
+                  <motion.circle
+                    cx="60" cy="60" r={radius} fill="none"
+                    stroke={scoreColor} strokeWidth="8" strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    initial={{ strokeDashoffset: circumference }}
+                    animate={{ strokeDashoffset }}
+                    transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-mono font-bold text-foreground">{overallScore}%</span>
+                  <span className="text-[10px] text-muted-foreground">Overall</span>
                 </div>
+              </div>
 
-                {result.matching_segments.slice(0, 5).map((seg, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.08 }}
-                    className={`bg-secondary/40 rounded-xl p-3 ${sideBySide ? 'grid grid-cols-2 gap-3' : 'space-y-2'}`}
-                  >
-                    <div className="text-[10px]">
-                      <span className="inline-block font-bold text-primary text-[9px] uppercase tracking-wider mb-1">A</span>
-                      <p className="text-foreground/80 leading-relaxed bg-primary/5 rounded-lg px-2.5 py-1.5 border-l-2 border-primary">
-                        {seg.text_from_A}
-                      </p>
+              {/* Breakdown Bars */}
+              <div className="flex-1 w-full space-y-3">
+                {[
+                  { label: 'Semantic', value: result.semantic_similarity },
+                  { label: 'Structural', value: result.structural_similarity },
+                  { label: 'Idea Overlap', value: result.idea_overlap },
+                ].map((bar) => (
+                  <div key={bar.label}>
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span className="text-muted-foreground">{bar.label}</span>
+                      <span className="font-mono font-semibold text-foreground">{bar.value}%</span>
                     </div>
-                    <div className="text-[10px]">
-                      <span className="inline-block font-bold text-warning text-[9px] uppercase tracking-wider mb-1">B</span>
-                      <p className="text-foreground/80 leading-relaxed bg-warning/5 rounded-lg px-2.5 py-1.5 border-l-2 border-warning">
-                        {seg.text_from_B}
-                      </p>
+                    <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${bar.value}%` }}
+                        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                        className="h-full rounded-full bg-primary"
+                      />
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
+            </div>
+
+            {/* Risk Assessment */}
+            <div className="bg-card border border-border rounded-xl p-4 shadow-card space-y-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${riskColor(result.plagiarism_risk)}`}>
+                  Plagiarism Risk: {result.plagiarism_risk}
+                </span>
+                {result.is_paraphrase && (
+                  <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-warning/10 text-warning">
+                    Paraphrase Detected ({result.paraphrase_confidence}%)
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">{result.risk_explanation}</p>
+            </div>
+
+            {/* Shared Ideas */}
+            {result.shared_ideas.length > 0 && (
+              <div className="bg-card border border-border rounded-xl p-4 shadow-card">
+                <h3 className="text-xs font-bold text-foreground mb-3">Shared Ideas</h3>
+                <div className="flex flex-wrap gap-2">
+                  {result.shared_ideas.map((idea, i) => (
+                    <span key={i} className="text-[10px] bg-secondary text-secondary-foreground px-3 py-1.5 rounded-full">{idea}</span>
+                  ))}
+                </div>
+              </div>
             )}
+
+            {/* Unique Ideas */}
+            {(result.unique_to_A.length > 0 || result.unique_to_B.length > 0) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {result.unique_to_A.length > 0 && (
+                  <div className="bg-card border border-border rounded-xl p-4 shadow-card">
+                    <h4 className="text-[11px] font-bold text-foreground mb-2">Only in Text A</h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {result.unique_to_A.map((idea, i) => (
+                        <span key={i} className="text-[10px] bg-success/10 text-success px-2.5 py-1 rounded-full">{idea}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {result.unique_to_B.length > 0 && (
+                  <div className="bg-card border border-border rounded-xl p-4 shadow-card">
+                    <h4 className="text-[11px] font-bold text-foreground mb-2">Only in Text B</h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {result.unique_to_B.map((idea, i) => (
+                        <span key={i} className="text-[10px] bg-primary/10 text-primary px-2.5 py-1 rounded-full">{idea}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Matching Segments Table */}
+            {result.matching_segments.length > 0 && (
+              <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
+                <div className="px-4 py-3 border-b border-border">
+                  <h3 className="text-xs font-bold text-foreground">Matching Segments</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[11px]">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground">
+                        <th className="text-left px-4 py-2 font-semibold">From Text A</th>
+                        <th className="text-left px-4 py-2 font-semibold">From Text B</th>
+                        <th className="text-left px-4 py-2 font-semibold">Type</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.matching_segments.map((seg, i) => (
+                        <tr key={i} className={`border-b border-border ${i % 2 === 0 ? 'bg-secondary/30' : ''}`}>
+                          <td className="px-4 py-2.5 text-foreground">{seg.from_A}</td>
+                          <td className="px-4 py-2.5 text-foreground">{seg.from_B}</td>
+                          <td className="px-4 py-2.5">
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${typeColor(seg.type)}`}>
+                              {seg.type}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Verdict & Advice */}
+            <div className="space-y-3">
+              <p className="text-xs font-mono text-muted-foreground leading-relaxed">{result.verdict}</p>
+              <div className="flex gap-3 items-start border-l-2 border-primary pl-3 py-2 bg-primary/5 rounded-r-xl">
+                <span className="text-sm">💡</span>
+                <p className="text-xs text-foreground leading-relaxed">{result.advice}</p>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
