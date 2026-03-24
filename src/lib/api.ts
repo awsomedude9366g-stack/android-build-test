@@ -1,18 +1,30 @@
 import { supabase } from '@/integrations/supabase/client';
 
-export interface StatisticalDetails {
-  sentenceVariance: number;
-  repetitionPct: number;
-  vocabDiversity: number;
+export interface SentenceAnalysis {
+  text: string;
+  label: 'AI' | 'HUMAN';
+  reason: string;
+}
+
+export interface DetectionSignal {
+  icon: string;
+  signal: string;
+  description: string;
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
 export interface DetectionResult {
+  verdict: 'AI' | 'HUMAN' | 'MIXED';
   ai_probability: number;
   human_probability: number;
-  verdict: 'Likely AI' | 'Likely Human' | 'Mixed Content';
-  confidence: 'Low' | 'Medium' | 'High';
-  reason: string;
-  statistical_details?: StatisticalDetails;
+  confidence: number;
+  perplexity: 'LOW' | 'MEDIUM' | 'HIGH';
+  burstiness: 'LOW' | 'MEDIUM' | 'HIGH';
+  vocab_richness: 'LOW' | 'MEDIUM' | 'HIGH';
+  sentence_analysis: SentenceAnalysis[];
+  top_signals: DetectionSignal[];
+  forensic_analysis: string;
+  recommendations: string[];
 }
 
 export interface HumanizeResult {
@@ -20,16 +32,25 @@ export interface HumanizeResult {
 }
 
 export interface MatchingSegment {
-  text_from_A: string;
-  text_from_B: string;
+  from_A: string;
+  from_B: string;
+  type: 'exact' | 'paraphrase' | 'concept';
 }
 
 export interface SimilarityResult {
-  similarity: number;
-  matching_segments?: MatchingSegment[];
-  verdict?: string;
-  confidence?: 'Low' | 'Medium' | 'High';
-  explanation: string;
+  semantic_similarity: number;
+  structural_similarity: number;
+  idea_overlap: number;
+  plagiarism_risk: 'LOW' | 'MEDIUM' | 'HIGH';
+  is_paraphrase: boolean;
+  paraphrase_confidence: number;
+  shared_ideas: string[];
+  unique_to_A: string[];
+  unique_to_B: string[];
+  matching_segments: MatchingSegment[];
+  verdict: string;
+  risk_explanation: string;
+  advice: string;
 }
 
 export async function detectText(text: string): Promise<DetectionResult> {
@@ -41,9 +62,9 @@ export async function detectText(text: string): Promise<DetectionResult> {
   return data;
 }
 
-export async function humanizeText(text: string, mode: string): Promise<HumanizeResult> {
+export async function humanizeText(text: string, mode: string, intensity: string): Promise<HumanizeResult> {
   const { data, error } = await supabase.functions.invoke('humanize-text', {
-    body: { text, mode },
+    body: { text, mode, intensity },
   });
   if (error) throw new Error(error.message || 'Humanization failed');
   if (data.error) throw new Error(data.error);
