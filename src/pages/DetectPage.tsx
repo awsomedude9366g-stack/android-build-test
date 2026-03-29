@@ -28,11 +28,14 @@ export default function DetectPage() {
     }
   };
 
-  const verdictConfig = {
+  const verdictConfig: Record<string, { label: string; bg: string; text: string }> = {
     AI: { label: '🤖 AI Generated', bg: 'bg-destructive', text: 'text-destructive-foreground' },
     HUMAN: { label: '🧑 Human Written', bg: 'bg-success', text: 'text-success-foreground' },
     MIXED: { label: '🔀 Mixed Content', bg: 'bg-primary', text: 'text-primary-foreground' },
   };
+
+  const getVerdictStyle = (verdict: string) =>
+    verdictConfig[verdict] || verdictConfig.MIXED;
 
   const metricColor = (val: string) =>
     val === 'LOW' ? 'text-destructive' : val === 'MEDIUM' ? 'text-warning' : 'text-success';
