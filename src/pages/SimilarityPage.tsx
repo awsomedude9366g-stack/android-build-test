@@ -169,7 +169,7 @@ export default function SimilarityPage() {
             </div>
 
             {/* Shared Ideas */}
-            {result.shared_ideas.length > 0 && (
+            {(result.shared_ideas?.length ?? 0) > 0 && (
               <div className="bg-card border border-border rounded-xl p-4 shadow-card">
                 <h3 className="text-xs font-bold text-foreground mb-3">Shared Ideas</h3>
                 <div className="flex flex-wrap gap-2">
@@ -181,9 +181,9 @@ export default function SimilarityPage() {
             )}
 
             {/* Unique Ideas */}
-            {(result.unique_to_A.length > 0 || result.unique_to_B.length > 0) && (
+            {((result.unique_to_A?.length ?? 0) > 0 || (result.unique_to_B?.length ?? 0) > 0) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {result.unique_to_A.length > 0 && (
+                {(result.unique_to_A?.length ?? 0) > 0 && (
                   <div className="bg-card border border-border rounded-xl p-4 shadow-card">
                     <h4 className="text-[11px] font-bold text-foreground mb-2">Only in Text A</h4>
                     <div className="flex flex-wrap gap-1.5">
@@ -193,7 +193,7 @@ export default function SimilarityPage() {
                     </div>
                   </div>
                 )}
-                {result.unique_to_B.length > 0 && (
+                {(result.unique_to_B?.length ?? 0) > 0 && (
                   <div className="bg-card border border-border rounded-xl p-4 shadow-card">
                     <h4 className="text-[11px] font-bold text-foreground mb-2">Only in Text B</h4>
                     <div className="flex flex-wrap gap-1.5">
@@ -207,7 +207,7 @@ export default function SimilarityPage() {
             )}
 
             {/* Matching Segments Table */}
-            {result.matching_segments.length > 0 && (
+            {(result.matching_segments?.length ?? 0) > 0 && (
               <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
                 <div className="px-4 py-3 border-b border-border">
                   <h3 className="text-xs font-bold text-foreground">Matching Segments</h3>
