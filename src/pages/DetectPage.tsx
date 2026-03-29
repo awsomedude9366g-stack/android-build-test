@@ -101,9 +101,9 @@ export default function DetectPage() {
             className="mt-6 space-y-4"
           >
             {/* Verdict Banner */}
-            <div className={`${verdictConfig[result.verdict].bg} rounded-xl p-4 flex items-center justify-between`}>
-              <span className={`text-sm font-bold ${verdictConfig[result.verdict].text}`}>
-                {verdictConfig[result.verdict].label}
+            <div className={`${getVerdictStyle(result.verdict).bg} rounded-xl p-4 flex items-center justify-between`}>
+              <span className={`text-sm font-bold ${getVerdictStyle(result.verdict).text}`}>
+                {getVerdictStyle(result.verdict).label}
               </span>
               <div className="flex gap-2">
                 {[
