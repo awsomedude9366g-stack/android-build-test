@@ -1,51 +1,89 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { detectText, DetectionResult } from '@/lib/api';
-import { toast } from 'sonner';
+import { runDetection, LocalDetectionResult } from '@/lib/detectAlgorithm';
 
 const MAX_CHARS = 5000;
 
 export default function DetectPage() {
   const [text, setText] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<DetectionResult | null>(null);
+  const [result, setResult] = useState<LocalDetectionResult | null>(null);
 
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
   const charCount = text.length;
   const isReady = wordCount >= 20;
 
-  const handleDetect = async () => {
-    if (!isReady || loading) return;
-    setResult(null);
-    setLoading(true);
-    try {
-      const res = await detectText(text.slice(0, MAX_CHARS));
-      setResult(res);
-    } catch (err: any) {
-      toast.error(err?.message || 'Detection failed.');
-    } finally {
-      setLoading(false);
-    }
+  const handleDetect = () => {
+    if (!isReady) return;
+    setResult(runDetection(text.slice(0, MAX_CHARS)));
   };
 
   const verdictConfig: Record<string, { label: string; bg: string; text: string }> = {
     AI: { label: '🤖 AI Generated', bg: 'bg-destructive', text: 'text-destructive-foreground' },
     HUMAN: { label: '🧑 Human Written', bg: 'bg-success', text: 'text-success-foreground' },
-    MIXED: { label: '🔀 Mixed Content', bg: 'bg-primary', text: 'text-primary-foreground' },
+    MIXED: { label: '🔀 Mixed Content', bg: 'bg-warning', text: 'text-warning-foreground' },
   };
 
-  const getVerdictStyle = (verdict: string) =>
-    verdictConfig[verdict] || verdictConfig.MIXED;
+  const getVerdict = (v: string) => verdictConfig[v] || verdictConfig.MIXED;
 
-  const metricColor = (val: string) =>
-    val === 'LOW' ? 'text-destructive' : val === 'MEDIUM' ? 'text-warning' : 'text-success';
+  const severityColor = (s: string) =>
+    s === 'HIGH' ? 'bg-destructive/10 text-destructive' : s === 'MEDIUM' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success';
 
-  const severityColor = (sev: string) =>
-    sev === 'HIGH' ? 'bg-destructive/10 text-destructive' : sev === 'MEDIUM' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success';
+  const signalIcon: Record<string, string> = {
+    'Burstiness': '📊',
+    'AI Phrases': '🔤',
+    'Lexical Diversity': '📚',
+    'Passive Voice': '🔄',
+    'Sentence Length': '📏',
+    'Word Length': '🔡',
+  };
 
   const gaugeColor =
-    result && result.ai_probability > 65 ? 'hsl(var(--destructive))' :
-    result && result.ai_probability > 35 ? 'hsl(var(--warning))' : 'hsl(var(--success))';
+    result && result.aiScore > 65 ? 'hsl(var(--destructive))' :
+    result && result.aiScore > 35 ? 'hsl(var(--warning))' : 'hsl(var(--success))';
+
+  // Highlight AI phrases in text
+  const renderHighlightedText = () => {
+    if (!result || result.foundPhrases.length === 0) return null;
+    const lower = text.toLowerCase();
+    // Build ranges of matched phrases
+    const ranges: { start: number; end: number; phrase: string }[] = [];
+    for (const phrase of result.foundPhrases) {
+      let idx = lower.indexOf(phrase);
+      while (idx !== -1) {
+        ranges.push({ start: idx, end: idx + phrase.length, phrase });
+        idx = lower.indexOf(phrase, idx + 1);
+      }
+    }
+    // Sort and merge overlapping
+    ranges.sort((a, b) => a.start - b.start);
+    const merged: typeof ranges = [];
+    for (const r of ranges) {
+      const last = merged[merged.length - 1];
+      if (last && r.start <= last.end) {
+        last.end = Math.max(last.end, r.end);
+      } else {
+        merged.push({ ...r });
+      }
+    }
+
+    const parts: JSX.Element[] = [];
+    let cursor = 0;
+    merged.forEach((r, i) => {
+      if (cursor < r.start) {
+        parts.push(<span key={`t-${i}`}>{text.slice(cursor, r.start)}</span>);
+      }
+      parts.push(
+        <mark key={`h-${i}`} className="bg-destructive/15 text-destructive rounded px-0.5" title={`AI phrase: "${text.slice(r.start, r.end)}"`}>
+          {text.slice(r.start, r.end)}
+        </mark>
+      );
+      cursor = r.end;
+    });
+    if (cursor < text.length) {
+      parts.push(<span key="end">{text.slice(cursor)}</span>);
+    }
+    return parts;
+  };
 
   return (
     <div>
@@ -77,15 +115,10 @@ export default function DetectPage() {
             )}
             <button
               onClick={handleDetect}
-              disabled={!isReady || loading}
+              disabled={!isReady}
               className="bg-success text-success-foreground text-xs font-semibold px-5 py-2 rounded-lg disabled:opacity-30 transition-all hover:-translate-y-px hover:shadow-card-hover active:translate-y-0"
             >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-3.5 h-3.5 border-2 border-success-foreground/30 border-t-success-foreground rounded-full animate-spin" />
-                  Analyzing…
-                </span>
-              ) : '▶ Detect AI'}
+              ▶ Detect AI
             </button>
           </div>
         </div>
@@ -101,20 +134,17 @@ export default function DetectPage() {
             className="mt-6 space-y-4"
           >
             {/* Verdict Banner */}
-            <div className={`${getVerdictStyle(result.verdict).bg} rounded-xl p-4 flex items-center justify-between`}>
-              <span className={`text-sm font-bold ${getVerdictStyle(result.verdict).text}`}>
-                {getVerdictStyle(result.verdict).label}
+            <div className={`${getVerdict(result.verdict).bg} rounded-xl p-4 flex items-center justify-between`}>
+              <span className={`text-sm font-bold ${getVerdict(result.verdict).text}`}>
+                {getVerdict(result.verdict).label}
               </span>
               <div className="flex gap-2">
-                {[
-                  { label: 'AI', val: result.ai_probability },
-                  { label: 'Human', val: result.human_probability },
-                  { label: 'Conf', val: result.confidence },
-                ].map((chip) => (
-                  <span key={chip.label} className="bg-card/90 backdrop-blur text-foreground text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg">
-                    {chip.val}% {chip.label}
-                  </span>
-                ))}
+                <span className="bg-card/90 backdrop-blur text-foreground text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg">
+                  {result.aiScore}% AI
+                </span>
+                <span className="bg-card/90 backdrop-blur text-foreground text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg">
+                  {100 - result.aiScore}% Human
+                </span>
               </div>
             </div>
 
@@ -128,7 +158,7 @@ export default function DetectPage() {
               <div className="h-2 bg-secondary rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${result.ai_probability}%` }}
+                  animate={{ width: `${result.aiScore}%` }}
                   transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
                   className="h-full rounded-full"
                   style={{ backgroundColor: gaugeColor }}
@@ -136,89 +166,71 @@ export default function DetectPage() {
               </div>
             </div>
 
-            {/* Linguistic Metrics */}
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: 'Perplexity', value: result.perplexity, hint: 'Word predictability' },
-                { label: 'Burstiness', value: result.burstiness, hint: 'Length variation' },
-                { label: 'Vocabulary', value: result.vocab_richness, hint: 'Word diversity' },
-              ].map((m) => (
-                <div key={m.label} className="bg-card border border-border rounded-xl p-3 text-center shadow-card">
-                  <div className={`text-sm font-bold font-mono ${metricColor(m.value)}`}>{m.value}</div>
-                  <div className="text-[11px] font-semibold text-foreground mt-1">{m.label}</div>
-                  <div className="text-[9px] text-muted-foreground mt-0.5">{m.hint}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Sentence Analysis */}
-            {result.sentence_analysis && result.sentence_analysis.length > 0 && (
-              <div className="bg-card border border-border rounded-xl p-4 shadow-card space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-foreground">Sentence Analysis</h3>
-                  <div className="flex gap-3 text-[10px]">
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success" /> Human-like</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-destructive" /> AI-like</span>
-                  </div>
-                </div>
-                <div className="text-sm leading-relaxed">
-                  {result.sentence_analysis.map((s, i) => (
-                    <span
-                      key={i}
-                      className={`px-0.5 rounded ${s.label === 'AI' ? 'bg-destructive/8' : 'bg-success/8'}`}
-                      title={s.reason}
-                    >
-                      {s.text}{' '}
-                    </span>
-                  ))}
-                </div>
-                <p className="text-[10px] text-muted-foreground">Hover sentences to see reason</p>
-              </div>
-            )}
-
-            {/* Detected Signals */}
-            {result.top_signals && result.top_signals.length > 0 && (
+            {/* Signal Breakdown */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-foreground">Signal Breakdown</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {result.top_signals.map((sig, i) => (
+                {result.signals.map((sig) => (
                   <motion.div
-                    key={i}
+                    key={sig.name}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="bg-card border border-border rounded-xl p-3.5 shadow-card hover:shadow-card-hover transition-shadow"
+                    className="bg-card border border-border rounded-xl p-3.5 shadow-card"
                   >
                     <div className="flex items-start justify-between mb-1.5">
-                      <span className="text-lg">{sig.icon}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{signalIcon[sig.name] || '📈'}</span>
+                        <span className="text-xs font-bold text-foreground">{sig.name}</span>
+                      </div>
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${severityColor(sig.severity)}`}>
                         {sig.severity}
                       </span>
                     </div>
-                    <div className="text-xs font-bold text-foreground">{sig.signal}</div>
-                    <div className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{sig.description}</div>
+                    {/* Score bar */}
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.round(sig.score * 100)}%` }}
+                          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                          className="h-full rounded-full"
+                          style={{
+                            backgroundColor: sig.score >= 0.65 ? 'hsl(var(--destructive))' : sig.score >= 0.35 ? 'hsl(var(--warning))' : 'hsl(var(--success))',
+                          }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-muted-foreground w-8 text-right">
+                        {Math.round(sig.score * 100)}%
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground leading-relaxed">{sig.detail}</div>
+                    <div className="text-[9px] text-muted-foreground/60 mt-1">Weight: {sig.weight}%</div>
                   </motion.div>
                 ))}
               </div>
-            )}
+            </div>
 
-            {/* Forensic Analysis */}
-            {result.forensic_analysis && (
-              <div className="bg-secondary rounded-xl p-4">
-                <h3 className="text-xs font-bold text-foreground mb-2">Forensic Analysis</h3>
-                <p className="text-xs font-mono text-muted-foreground leading-[1.9]">{result.forensic_analysis}</p>
-              </div>
-            )}
-
-            {/* Recommendations */}
-            {result.recommendations && result.recommendations.length > 0 && (
-              <div className="space-y-2">
-                {result.recommendations.map((rec, i) => (
-                  <div key={i} className="flex gap-3 items-start border-l-2 border-primary pl-3 py-1">
-                    <span className="text-[10px] font-mono font-bold text-primary mt-0.5">
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-                    <p className="text-xs text-foreground leading-relaxed">{rec}</p>
+            {/* Highlighted AI Phrases */}
+            {result.foundPhrases.length > 0 && (
+              <div className="bg-card border border-border rounded-xl p-4 shadow-card space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-foreground">
+                    AI Phrases Found ({result.foundPhrases.length})
+                  </h3>
+                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <span className="w-2 h-2 rounded-full bg-destructive/30" /> Highlighted below
                   </div>
-                ))}
+                </div>
+                <div className="text-sm leading-relaxed font-mono">
+                  {renderHighlightedText()}
+                </div>
+                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border">
+                  {result.foundPhrases.map((p) => (
+                    <span key={p} className="text-[10px] bg-destructive/10 text-destructive px-2 py-0.5 rounded-full font-medium">
+                      {p}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </motion.div>
