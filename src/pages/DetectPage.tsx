@@ -18,9 +18,11 @@ export default function DetectPage() {
   };
 
   const verdictConfig: Record<string, { label: string; bg: string; text: string }> = {
-    AI: { label: '🤖 AI Generated', bg: 'bg-destructive', text: 'text-destructive-foreground' },
+    AI: { label: '🤖 Almost Certainly AI', bg: 'bg-destructive', text: 'text-destructive-foreground' },
+    LIKELY_AI: { label: '⚠️ Likely AI Written', bg: 'bg-orange-500', text: 'text-white' },
+    MIXED: { label: '🔀 Mixed / Uncertain', bg: 'bg-warning', text: 'text-warning-foreground' },
+    LIKELY_HUMAN: { label: '👤 Likely Human', bg: 'bg-emerald-400', text: 'text-emerald-950' },
     HUMAN: { label: '🧑 Human Written', bg: 'bg-success', text: 'text-success-foreground' },
-    MIXED: { label: '🔀 Mixed Content', bg: 'bg-warning', text: 'text-warning-foreground' },
   };
 
   const getVerdict = (v: string) => verdictConfig[v] || verdictConfig.MIXED;
