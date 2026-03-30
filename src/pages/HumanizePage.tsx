@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Copy, Download, Check } from 'lucide-react';
+import { Copy, Download, Check, ArrowDown, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { humanizeText, HumanizeResult } from '@/lib/api';
+import { humanizeLocally, Replacement } from '@/lib/humanizeAlgorithm';
+import { runDetection } from '@/lib/detectAlgorithm';
 import { toast } from 'sonner';
 
 const modes = ['natural', 'academic', 'casual', 'creative', 'simple'] as const;
@@ -15,6 +17,14 @@ const intensityDesc: Record<string, string> = {
 
 const MAX_CHARS = 5000;
 
+interface ScoreComparison {
+  before: number;
+  after: number;
+  reduction: number;
+  replacements: Replacement[];
+  totalReplacements: number;
+}
+
 export default function HumanizePage() {
   const [text, setText] = useState('');
   const [mode, setMode] = useState<string>('natural');
@@ -22,6 +32,7 @@ export default function HumanizePage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<HumanizeResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [scoreComparison, setScoreComparison] = useState<ScoreComparison | null>(null);
 
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
   const outputWordCount = result?.output.trim() ? result.output.trim().split(/\s+/).length : 0;
@@ -29,10 +40,43 @@ export default function HumanizePage() {
   const handleHumanize = async () => {
     if (!text.trim() || loading) return;
     setResult(null);
+    setScoreComparison(null);
     setLoading(true);
     try {
-      const res = await humanizeText(text.slice(0, MAX_CHARS), mode, intensity);
-      setResult(res);
+      // Step 1: Score BEFORE
+      const beforeScore = runDetection(text).aiScore;
+
+      // Step 2: Local phrase replacements + contractions
+      const local = humanizeLocally(text.slice(0, MAX_CHARS));
+
+      // Step 3: AI rewrite on the locally-cleaned text
+      const res = await humanizeText(local.output, mode, intensity);
+
+      // Step 4: Run local replacements again on AI output for any remaining phrases
+      const finalLocal = humanizeLocally(res.output);
+      const finalOutput = finalLocal.output;
+
+      // Step 5: Score AFTER
+      const afterScore = runDetection(finalOutput).aiScore;
+
+      // Merge all replacements (dedup by original+replacement)
+      const allReplacements = [...local.replacements, ...finalLocal.replacements];
+      const seen = new Set<string>();
+      const uniqueReplacements = allReplacements.filter(r => {
+        const key = `${r.original.toLowerCase()}→${r.replacement.toLowerCase()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      setResult({ output: finalOutput });
+      setScoreComparison({
+        before: beforeScore,
+        after: afterScore,
+        reduction: beforeScore - afterScore,
+        replacements: uniqueReplacements,
+        totalReplacements: allReplacements.length,
+      });
     } catch (err: any) {
       toast.error(err?.message || 'Humanization failed.');
     } finally {
@@ -62,7 +106,6 @@ export default function HumanizePage() {
     <div>
       {/* Controls */}
       <div className="space-y-4 mb-5">
-        {/* Mode selector */}
         <div>
           <span className="text-xs font-semibold text-foreground mb-2 block">Mode:</span>
           <div className="flex flex-wrap gap-2">
@@ -82,7 +125,6 @@ export default function HumanizePage() {
           </div>
         </div>
 
-        {/* Intensity selector */}
         <div>
           <span className="text-xs font-semibold text-foreground mb-2 block">Intensity:</span>
           <div className="flex items-center gap-2">
@@ -153,7 +195,7 @@ export default function HumanizePage() {
           </div>
           <div className="min-h-[240px] p-4">
             {result ? (
-              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-mono">{result.output}</p>
+              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{result.output}</p>
             ) : (
               <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-muted-foreground/40">
                 <span className="text-3xl mb-2">✦</span>
@@ -177,21 +219,63 @@ export default function HumanizePage() {
         </div>
       </div>
 
-      {/* Tips */}
+      {/* Score Comparison */}
       <AnimatePresence>
-        {result && (
+        {scoreComparison && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mt-5 space-y-2"
+            transition={{ delay: 0.15 }}
+            className="mt-5 space-y-4"
           >
-            {['Run the output through AI Detector to verify it passes', 'Review for factual accuracy — meaning is preserved but phrasing changes', 'Add your own personal touches for maximum authenticity'].map((tip, i) => (
-              <div key={i} className="flex gap-3 items-start border-l-2 border-primary pl-3 py-1">
-                <span className="text-[10px] font-mono font-bold text-primary mt-0.5">{String(i + 1).padStart(2, '0')}</span>
-                <p className="text-xs text-foreground leading-relaxed">{tip}</p>
+            {/* Score cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-card border border-border rounded-xl p-4 text-center">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">AI Score Before</span>
+                <span className={`text-2xl font-bold font-mono ${scoreComparison.before >= 75 ? 'text-destructive' : scoreComparison.before >= 56 ? 'text-warning' : 'text-success'}`}>
+                  {scoreComparison.before}%
+                </span>
               </div>
-            ))}
+              <div className="bg-card border border-border rounded-xl p-4 text-center flex flex-col items-center justify-center">
+                <ArrowRight size={16} className="text-muted-foreground hidden sm:block" />
+                <ArrowDown size={16} className="text-muted-foreground sm:hidden" />
+                <span className="text-[10px] font-semibold text-success mt-1">
+                  −{scoreComparison.reduction}% reduction
+                </span>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-4 text-center">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">AI Score After</span>
+                <span className={`text-2xl font-bold font-mono ${scoreComparison.after >= 75 ? 'text-destructive' : scoreComparison.after >= 56 ? 'text-warning' : 'text-success'}`}>
+                  {scoreComparison.after}%
+                </span>
+              </div>
+            </div>
+
+            {/* Replacement count */}
+            <div className="bg-card border border-border rounded-xl px-4 py-3">
+              <span className="text-xs font-semibold text-foreground">
+                {scoreComparison.totalReplacements} replacement{scoreComparison.totalReplacements !== 1 ? 's' : ''} applied
+              </span>
+            </div>
+
+            {/* Replacement tags */}
+            {scoreComparison.replacements.length > 0 && (
+              <div className="bg-card border border-border rounded-xl p-4">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-3">Replacements Made</span>
+                <div className="flex flex-wrap gap-2">
+                  {scoreComparison.replacements.map((r, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1.5 text-[11px] bg-muted/50 border border-border rounded-full px-2.5 py-1"
+                    >
+                      <span className="text-destructive/70 line-through">{r.original}</span>
+                      <ArrowRight size={10} className="text-muted-foreground" />
+                      <span className="text-success font-medium">{r.replacement}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
