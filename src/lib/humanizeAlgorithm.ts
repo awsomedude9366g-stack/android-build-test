@@ -6,8 +6,8 @@ export interface Replacement {
 }
 
 const AI_PHRASE_MAP: [string, string][] = [
-  ['furthermore', 'also'],
-  ['moreover', 'plus'],
+  ['furthermore', 'And'],
+  ['moreover', "What's more"],
   ['consequently', 'so'],
   ['nevertheless', 'still'],
   ['nonetheless', 'even so'],
