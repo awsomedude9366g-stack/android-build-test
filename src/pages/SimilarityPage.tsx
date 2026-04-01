@@ -9,7 +9,7 @@ export default function SimilarityPage() {
   const [textA, setTextA] = useState('');
   const [textB, setTextB] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<SimilarityResult | null>(null);
+  const [result, setResult] = useState<(SimilarityResult & { overall_score?: number }) | null>(null);
 
   const wordCountA = textA.trim() ? textA.trim().split(/\s+/).length : 0;
   const wordCountB = textB.trim() ? textB.trim().split(/\s+/).length : 0;
@@ -28,11 +28,30 @@ export default function SimilarityPage() {
     }
   };
 
-  const overallScore = result ? Math.round((result.semantic_similarity + result.structural_similarity + result.idea_overlap) / 3) : 0;
-  const scoreColor = overallScore < 40 ? 'hsl(var(--success))' : overallScore < 70 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))';
+  const safeNum = (v: unknown): number => {
+    const n = Number(v);
+    return isNaN(n) ? 0 : Math.min(100, Math.max(0, Math.round(n)));
+  };
 
-  const riskColor = (risk: string) =>
-    risk === 'HIGH' ? 'bg-destructive/10 text-destructive' : risk === 'MEDIUM' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success';
+  const overallScore = result
+    ? safeNum((result as any).overall_score ?? Math.round((safeNum(result.semantic_similarity) + safeNum(result.structural_similarity) + safeNum(result.idea_overlap)) / 3))
+    : 0;
+
+  const scoreColor =
+    overallScore <= 30 ? 'hsl(var(--success))' :
+    overallScore <= 60 ? 'hsl(var(--warning))' :
+    'hsl(var(--destructive))';
+
+  const riskColor = (risk: string) => {
+    const r = risk?.toUpperCase();
+    return r === 'HIGH' ? 'bg-destructive/10 text-destructive' : r === 'MEDIUM' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success';
+  };
+
+  const typeLabel = (type: string) => {
+    if (type === 'exact') return 'Exact Match';
+    if (type === 'paraphrase') return 'Paraphrase';
+    return type || 'Concept';
+  };
 
   const typeColor = (type: string) =>
     type === 'exact' ? 'bg-destructive/10 text-destructive' : type === 'paraphrase' ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary';
@@ -98,6 +117,14 @@ export default function SimilarityPage() {
         </button>
       </div>
 
+      {/* Loading State */}
+      {loading && !result && (
+        <div className="mt-6 flex flex-col items-center justify-center py-12">
+          <span className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin mb-3" />
+          <span className="text-xs text-muted-foreground">Analyzing similarity…</span>
+        </div>
+      )}
+
       {/* Results */}
       <AnimatePresence>
         {result && (
@@ -123,7 +150,7 @@ export default function SimilarityPage() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-mono font-bold text-foreground">{overallScore}%</span>
+                  <span className="text-2xl font-mono font-bold" style={{ color: scoreColor }}>{overallScore}%</span>
                   <span className="text-[10px] text-muted-foreground">Overall</span>
                 </div>
               </div>
@@ -131,9 +158,9 @@ export default function SimilarityPage() {
               {/* Breakdown Bars */}
               <div className="flex-1 w-full space-y-3">
                 {[
-                  { label: 'Semantic', value: result.semantic_similarity },
-                  { label: 'Structural', value: result.structural_similarity },
-                  { label: 'Idea Overlap', value: result.idea_overlap },
+                  { label: 'Semantic', value: safeNum(result.semantic_similarity) },
+                  { label: 'Structural', value: safeNum(result.structural_similarity) },
+                  { label: 'Idea Overlap', value: safeNum(result.idea_overlap) },
                 ].map((bar) => (
                   <div key={bar.label}>
                     <div className="flex justify-between text-[11px] mb-1">
@@ -157,11 +184,11 @@ export default function SimilarityPage() {
             <div className="bg-card border border-border rounded-xl p-4 shadow-card space-y-3">
               <div className="flex items-center gap-3 flex-wrap">
                 <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${riskColor(result.plagiarism_risk)}`}>
-                  Plagiarism Risk: {result.plagiarism_risk}
+                  Plagiarism Risk: {result.plagiarism_risk === 'HIGH' ? 'High' : result.plagiarism_risk === 'MEDIUM' ? 'Medium' : 'Low'}
                 </span>
                 {result.is_paraphrase && (
                   <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-warning/10 text-warning">
-                    Paraphrase Detected ({result.paraphrase_confidence}%)
+                    Paraphrase Detected ({safeNum(result.paraphrase_confidence)}%)
                   </span>
                 )}
               </div>
@@ -224,11 +251,11 @@ export default function SimilarityPage() {
                     <tbody>
                       {result.matching_segments.map((seg, i) => (
                         <tr key={i} className={`border-b border-border ${i % 2 === 0 ? 'bg-secondary/30' : ''}`}>
-                          <td className="px-4 py-2.5 text-foreground">{seg.from_A}</td>
-                          <td className="px-4 py-2.5 text-foreground">{seg.from_B}</td>
+                          <td className="px-4 py-2.5 text-foreground">{seg.from_A || '—'}</td>
+                          <td className="px-4 py-2.5 text-foreground">{seg.from_B || '—'}</td>
                           <td className="px-4 py-2.5">
                             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${typeColor(seg.type)}`}>
-                              {seg.type}
+                              {typeLabel(seg.type)}
                             </span>
                           </td>
                         </tr>
@@ -242,10 +269,12 @@ export default function SimilarityPage() {
             {/* Verdict & Advice */}
             <div className="space-y-3">
               <p className="text-xs font-mono text-muted-foreground leading-relaxed">{result.verdict}</p>
-              <div className="flex gap-3 items-start border-l-2 border-primary pl-3 py-2 bg-primary/5 rounded-r-xl">
-                <span className="text-sm">💡</span>
-                <p className="text-xs text-foreground leading-relaxed">{result.advice}</p>
-              </div>
+              {result.advice && (
+                <div className="flex gap-3 items-start border-l-2 border-primary pl-3 py-2 bg-primary/5 rounded-r-xl">
+                  <span className="text-sm">💡</span>
+                  <p className="text-xs text-foreground leading-relaxed">{result.advice}</p>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
