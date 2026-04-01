@@ -14,7 +14,7 @@ const AI_PHRASE_MAP: [string, string][] = [
   ['additionally', 'also'],
   ['subsequently', 'then'],
   ['conversely', 'on the flip side'],
-  ['in conclusion', 'to wrap up'],
+  ['in conclusion', 'Bottom line'],
   ['in summary', 'in short'],
   ['to summarize', 'basically'],
   ['all in all', 'overall'],
