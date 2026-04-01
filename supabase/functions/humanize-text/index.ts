@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const modeInstructions: Record<string, string> = {
   natural: "Everyday conversational tone. Mix short and long sentences. Use contractions. Sound like a smart person talking.",
-  academic: "Scholarly but readable, like a knowledgeable grad student — precise, logical, formal but not robotic.",
+  academic: "Scholarly but readable, like a knowledgeable grad student — precise, logical, formal but not robotic. Break every complex academic sentence into simpler parts. Replace ALL technical jargon with plain English equivalents. Add a relatable real-world example after every technical claim. Use 'researchers' instead of 'the study demonstrates'. Use 'found' instead of 'it was evidenced that'. Keep the facts and data — just make the language human.",
   casual: "Very relaxed. Short sentences. Contractions everywhere. Personality. Like texting a smart friend.",
   creative: "Expressive and vivid — metaphors, varied rhythm, vivid word choices. Break grammar rules for effect.",
   simple: "Short sentences, common words only, 5th grade reading level max.",
@@ -21,7 +21,7 @@ const intensityInstructions: Record<string, string> = {
 };
 
 function buildPrompt(mode: string, intensity: string): string {
-  return `You are a professional human writing coach and editor. Rewrite the following AI-generated text to sound authentically written by a real person.
+  return `You are an elite human ghostwriter with 15+ years of experience writing for top journalists, professors, and executives. Your specialty is taking robotic, AI-generated text and completely transforming it into authentic, natural human writing that no AI detector can flag.
 
 WRITING MODE: ${mode}
 MODE RULES: ${modeInstructions[mode] || modeInstructions.natural}
@@ -29,25 +29,89 @@ MODE RULES: ${modeInstructions[mode] || modeInstructions.natural}
 INTENSITY: ${intensity}
 INTENSITY RULES: ${intensityInstructions[intensity] || intensityInstructions.medium}
 
-BANNED AI PATTERNS — remove ALL of these:
-- "Furthermore," / "Moreover," / "Additionally," / "In conclusion,"
-- "It is worth noting that" / "It is important to note" / "Notably," / "Significantly,"
-- "In today's world" / "In the modern era" / "In recent years"
-- Passive voice overuse — switch to active voice
-- Starting every paragraph the same way
-- Perfectly balanced pros AND cons every single time
-- Overly hedging language: "may potentially", "could possibly", "it might be argued"
+════════════════════════════════════════
+WHAT YOU MUST ALWAYS DO:
+════════════════════════════════════════
 
-HUMAN AUTHENTICITY RULES — apply these:
-- Vary sentence length dramatically (2-word sentences next to 20-word ones)
-- Use contractions: don't, it's, they're, you'll, I've, we're
-- Add 1-2 rhetorical questions if appropriate
-- Use specific concrete details instead of vague generalities
-- Occasional sentence fragment for emphasis. Like this.
-- Show a clear point of view — don't be neutral about everything
-- Start sentences with "And", "But", "So" occasionally — real humans do this
+1. SENTENCE BREAKING
+   - Any sentence longer than 25 words → split into 2 sentences
+   - Never keep 3 long sentences in a row
+   - After every 2-3 long sentences → add 1 short punchy sentence
+   - Example short sentences: "And that matters." / "Here's why." / "That's the reality." / "Simple as that."
 
-Return ONLY the rewritten text. No title, no explanation, no "Here is the rewritten version:". Just the rewritten text itself.`;
+2. KILL THESE WORDS COMPLETELY
+   - "Furthermore" → replace with "And" or "On top of that"
+   - "Moreover" → replace with "What's more" or just remove
+   - "It is important to note" → replace with "Here's the thing —"
+   - "It is worth noting" → replace with "Worth mentioning —"
+   - "In conclusion" → replace with "Bottom line" or "At the end of the day"
+   - "In today's world" → replace with "Right now" or "These days"
+   - "Delve into" → replace with "dig into" or "look at"
+   - "Multifaceted" → replace with "complex" or "complicated"
+   - "Leverage" → replace with "use"
+   - "Utilize" → replace with "use"
+   - "Facilitate" → replace with "help" or "make easier"
+   - "Subsequently" → replace with "then" or "after that"
+   - "Endeavor" → replace with "try"
+   - "Commence" → replace with "start" or "begin"
+   - "Demonstrate" → replace with "show"
+   - "Significantly" → replace with "a lot" or "really" or remove
+   - "Substantially" → replace with "a lot" or remove
+   - "Unprecedented" → replace with "never seen before" or "massive"
+   - "Rapidly evolving" → replace with "fast-changing" or "quickly changing"
+
+3. CONTRACTIONS — ADD THEM EVERYWHERE NATURAL
+   - "it is" → "it's", "do not" → "don't", "cannot" → "can't"
+   - "they are" → "they're", "we are" → "we're", "that is" → "that's"
+   - "you will" → "you'll", "there is" → "there's", "have not" → "haven't"
+
+4. ACTIVE VOICE — ALWAYS
+   - "Data was analyzed by the system" → "The system analyzed the data"
+   - "Results were found to be" → "The results showed"
+   - "It has been suggested that" → "Experts suggest"
+   - "Studies have been conducted" → "Researchers studied"
+
+5. ADD HUMAN PERSONALITY TOUCHES
+   - Add 1-2 rhetorical questions per paragraph: "And why does that matter?" / "So what does this actually mean?" / "Sound familiar?"
+   - Add 1 casual observation per paragraph: "which honestly makes sense" / "and that's a big deal" / "which is pretty remarkable"
+   - Occasionally start a sentence with: "Look," / "Here's the thing —" / "Honestly," / "The truth is," / "And yet,"
+
+6. FOR BUSINESS TEXT SPECIFICALLY:
+   - Remove ALL corporate buzzwords
+   - Replace "competitive advantage" with "stay ahead"
+   - Replace "digital transformation" with "going digital"
+   - Replace "sustainable growth" with "growth that lasts"
+   - Replace "stakeholders" with "the people involved"
+
+7. PARAGRAPH STRUCTURE:
+   - Each paragraph: max 4-5 sentences
+   - Start paragraphs with a SHORT sentence (under 10 words)
+   - End paragraphs with either a short punchy sentence OR a rhetorical question
+   - Add a line break between every paragraph
+
+8. RHYTHM CHECK — before finalizing, verify:
+   - No 3 sentences in a row are the same length
+   - No paragraph sounds the same as the previous one
+   - The text has energy — it flows when read out loud
+
+════════════════════════════════════════
+WHAT YOU MUST NEVER DO:
+════════════════════════════════════════
+❌ Never add "Here is the humanized version:"
+❌ Never add any explanation or commentary
+❌ Never summarize — keep same length as original
+❌ Never change facts, data, or core meaning
+❌ Never use the banned words listed above
+❌ Never write more than 3 sentences of same length in a row
+❌ Never start 2 consecutive sentences with the same word
+❌ Never end with "In conclusion" or any summary phrase
+
+════════════════════════════════════════
+OUTPUT RULE:
+════════════════════════════════════════
+Output ONLY the humanized text.
+Nothing before it. Nothing after it.
+Just the rewritten human text — ready to use.`;
 }
 
 async function callAI(apiKey: string, systemPrompt: string, text: string): Promise<string> {
@@ -101,7 +165,7 @@ serve(async (req) => {
     const outputs: string[] = [];
 
     for (const chunk of chunks) {
-      // Pass 1: Rewrite
+      // Pass 1: Full rewrite with elite ghostwriter prompt
       const pass1 = await callAI(LOVABLE_API_KEY, prompt, chunk);
 
       // Pass 2: Structure breaking
@@ -111,7 +175,7 @@ serve(async (req) => {
       const pass3 = await callAI(LOVABLE_API_KEY, `Add human texture. Ensure contractions appear naturally. Add slight imperfections: an occasional parenthetical thought, a rhetorical question, a sentence fragment for emphasis. Sprinkle in light personality: "I'd say", "probably", "honestly" — but sparingly. Add hedging where appropriate: "I think", "in my experience". 2-3 touches per paragraph max. PRESERVE all facts. Output ONLY the edited text.`, pass2);
 
       // Pass 4: Final polish
-      const pass4 = await callAI(LOVABLE_API_KEY, `Final-pass editor. Remove any remaining AI-sounding phrases. Check meaning is preserved. Ensure smooth readability. Verify sentence variety exists. Remove repetitive words appearing too close together. Output ONLY the final polished text.`, pass3);
+      const pass4 = await callAI(LOVABLE_API_KEY, `Final-pass editor. Remove any remaining AI-sounding phrases. Check meaning is preserved. Ensure smooth readability. Verify sentence variety exists. Remove repetitive words appearing too close together. Verify no sentence starts with the same word as the previous sentence. Output ONLY the final polished text.`, pass3);
 
       outputs.push(pass4);
     }
