@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, Download, Check, ArrowDown, ArrowRight } from 'lucide-react';
+import { Copy, Check, ArrowLeft, ArrowRight, ArrowDown, Trash2, ClipboardPaste, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { humanizeText, HumanizeResult } from '@/lib/api';
 import { humanizeLocally, Replacement } from '@/lib/humanizeAlgorithm';
@@ -8,14 +8,11 @@ import { toast } from 'sonner';
 
 const modes = ['natural', 'academic', 'casual', 'creative', 'simple'] as const;
 const intensities = ['light', 'medium', 'heavy'] as const;
-
-const intensityDesc: Record<string, string> = {
-  light: 'Fix obvious AI patterns only',
-  medium: 'Restructure and vary significantly',
-  heavy: 'Full rewrite with natural imperfections',
-};
-
 const MAX_CHARS = 5000;
+
+interface HumanizePageProps {
+  onBack: () => void;
+}
 
 interface ScoreComparison {
   before: number;
@@ -25,7 +22,7 @@ interface ScoreComparison {
   totalReplacements: number;
 }
 
-export default function HumanizePage() {
+export default function HumanizePage({ onBack }: HumanizePageProps) {
   const [text, setText] = useState('');
   const [mode, setMode] = useState<string>('natural');
   const [intensity, setIntensity] = useState<string>('medium');
@@ -36,6 +33,7 @@ export default function HumanizePage() {
 
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
   const outputWordCount = result?.output.trim() ? result.output.trim().split(/\s+/).length : 0;
+  const charCount = text.length;
 
   const handleHumanize = async () => {
     if (!text.trim() || loading) return;
@@ -43,23 +41,12 @@ export default function HumanizePage() {
     setScoreComparison(null);
     setLoading(true);
     try {
-      // Step 1: Score BEFORE
       const beforeScore = runDetection(text).aiScore;
-
-      // Step 2: Local phrase replacements + contractions
       const local = humanizeLocally(text.slice(0, MAX_CHARS));
-
-      // Step 3: AI rewrite on the locally-cleaned text
       const res = await humanizeText(local.output, mode, intensity);
-
-      // Step 4: Run local replacements again on AI output for any remaining phrases
       const finalLocal = humanizeLocally(res.output);
       const finalOutput = finalLocal.output;
-
-      // Step 5: Score AFTER
       const afterScore = runDetection(finalOutput).aiScore;
-
-      // Merge all replacements (dedup by original+replacement)
       const allReplacements = [...local.replacements, ...finalLocal.replacements];
       const seen = new Set<string>();
       const uniqueReplacements = allReplacements.filter(r => {
@@ -68,7 +55,6 @@ export default function HumanizePage() {
         seen.add(key);
         return true;
       });
-
       setResult({ output: finalOutput });
       setScoreComparison({
         before: beforeScore,
@@ -88,194 +74,223 @@ export default function HumanizePage() {
     if (result) {
       navigator.clipboard.writeText(result.output);
       setCopied(true);
-      toast.success('Copied to clipboard');
+      toast.success('Copied! ✅');
       setTimeout(() => setCopied(false), 2000);
     }
   };
 
-  const downloadOutput = () => {
-    if (!result) return;
-    const blob = new Blob([result.output], { type: 'text/plain' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'humanized-text.txt';
-    a.click();
+  const handlePaste = async () => {
+    const t = await navigator.clipboard.readText();
+    setText(t);
+  };
+
+  const handleShare = () => {
+    if (result && navigator.share) {
+      navigator.share({ text: result.output }).catch(() => {});
+    } else {
+      copyOutput();
+    }
   };
 
   return (
-    <div>
-      {/* Controls */}
+    <div className="min-h-svh px-6 pt-6 pb-12">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <button onClick={onBack} className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-card transition-colors">
+          <ArrowLeft size={18} className="text-foreground" />
+        </button>
+        <h1 className="font-display text-lg text-foreground">Humanizer</h1>
+        <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full gradient-purple-btn text-white">✍️ AI → Human</span>
+      </div>
+
+      {/* Mode + Intensity */}
       <div className="space-y-4 mb-5">
         <div>
-          <span className="text-xs font-semibold text-foreground mb-2 block">Mode:</span>
+          <span className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-2 block">Mode</span>
           <div className="flex flex-wrap gap-2">
             {modes.map((m) => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all capitalize ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all capitalize ${
                   mode === m
-                    ? 'bg-success/10 border-success/30 text-success'
-                    : 'bg-card border-border text-muted-foreground hover:border-border hover:text-foreground'
+                    ? 'gradient-purple-btn text-white shadow-card'
+                    : 'bg-card text-muted-foreground hover:text-foreground'
                 }`}
+                style={mode !== m ? { border: '1px solid rgba(139, 92, 246, 0.2)' } : {}}
               >
                 {m}
               </button>
             ))}
           </div>
         </div>
-
         <div>
-          <span className="text-xs font-semibold text-foreground mb-2 block">Intensity:</span>
-          <div className="flex items-center gap-2">
-            <div className="flex gap-2">
-              {intensities.map((int) => (
-                <button
-                  key={int}
-                  onClick={() => setIntensity(int)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all capitalize ${
-                    intensity === int
-                      ? 'bg-primary/10 border-primary/30 text-primary'
-                      : 'bg-card border-border text-muted-foreground hover:border-border hover:text-foreground'
-                  }`}
-                >
-                  {int}
-                </button>
-              ))}
-            </div>
-            <span className="text-[10px] text-muted-foreground ml-2 hidden sm:inline">{intensityDesc[intensity]}</span>
+          <span className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-2 block">Intensity</span>
+          <div className="flex gap-2">
+            {intensities.map((int) => (
+              <button
+                key={int}
+                onClick={() => setIntensity(int)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all capitalize ${
+                  intensity === int
+                    ? 'gradient-purple-btn text-white shadow-card'
+                    : 'bg-card text-muted-foreground hover:text-foreground'
+                }`}
+                style={intensity !== int ? { border: '1px solid rgba(139, 92, 246, 0.2)' } : {}}
+              >
+                {int}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Left - Original */}
-        <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <span className="text-xs font-semibold text-foreground">Original (AI) Text</span>
-            <span className="text-[11px] font-mono text-muted-foreground">{wordCount}w</span>
-          </div>
+      {/* Input */}
+      <div>
+        <span className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-2 block">AI-Generated Text</span>
+        <div className="bg-card rounded-2xl shadow-card overflow-hidden" style={{ border: '1px solid rgba(139, 92, 246, 0.2)' }}>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Paste AI-generated text here..."
-            className="w-full min-h-[240px] p-4 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none resize-none"
+            className="w-full min-h-[180px] p-5 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none resize-none"
             maxLength={MAX_CHARS}
           />
-          <div className="flex items-center justify-end px-4 py-3 border-t border-border">
-            <button
-              onClick={handleHumanize}
-              disabled={!text.trim() || loading}
-              className="bg-success text-success-foreground text-xs font-semibold px-5 py-2 rounded-lg disabled:opacity-30 transition-all hover:-translate-y-px hover:shadow-card-hover active:translate-y-0"
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-3.5 h-3.5 border-2 border-success-foreground/30 border-t-success-foreground rounded-full animate-spin" />
-                  Rewriting…
-                </span>
-              ) : '✦ Humanize'}
-            </button>
-          </div>
-        </div>
-
-        {/* Right - Output */}
-        <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <span className="text-xs font-semibold text-foreground">Humanized Output</span>
-            {result && (
-              <button
-                onClick={copyOutput}
-                className="flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-primary/80 transition-colors"
-              >
-                {copied ? <Check size={12} className="text-success" /> : <Copy size={12} />}
-                {copied ? 'Copied' : 'Copy'}
+          <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: 'rgba(139, 92, 246, 0.15)' }}>
+            <span className="text-[11px] font-mono text-muted-foreground">{charCount}/{MAX_CHARS}</span>
+            <div className="flex gap-2">
+              <button onClick={() => { setText(''); setResult(null); setScoreComparison(null); }} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-full" style={{ border: '1px solid rgba(139, 92, 246, 0.2)' }}>
+                <Trash2 size={12} /> Clear
               </button>
-            )}
-          </div>
-          <div className="min-h-[240px] p-4">
-            {result ? (
-              <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{result.output}</p>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-muted-foreground/40">
-                <span className="text-3xl mb-2">✦</span>
-                <span className="text-xs">Humanized text will appear here</span>
-              </div>
-            )}
-          </div>
-          {result && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-              <span className="text-[10px] font-mono text-muted-foreground">
-                Before: {wordCount}w · After: {outputWordCount}w · Δ {outputWordCount - wordCount > 0 ? '+' : ''}{outputWordCount - wordCount}w
-              </span>
-              <button
-                onClick={downloadOutput}
-                className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Download size={12} /> Save
+              <button onClick={handlePaste} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-full" style={{ border: '1px solid rgba(139, 92, 246, 0.2)' }}>
+                <ClipboardPaste size={12} /> Paste
               </button>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
-      {/* Score Comparison */}
+      {/* Loading */}
+      {loading && (
+        <div className="mt-8 flex flex-col items-center py-12">
+          <div className="flex gap-1 text-2xl mb-3">
+            <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay: 0 }}>.</motion.span>
+            <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay: 0.2 }}>.</motion.span>
+            <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }}>.</motion.span>
+          </div>
+          <span className="text-sm text-muted-foreground">Rewriting your text...</span>
+          <div className="mt-6 w-full max-w-md">
+            <div className="h-24 rounded-2xl animate-shimmer" />
+          </div>
+        </div>
+      )}
+
+      {/* Action Button */}
+      {!loading && !result && (
+        <motion.button
+          onClick={handleHumanize}
+          disabled={!text.trim()}
+          className="w-full mt-6 py-3.5 rounded-xl text-sm font-semibold text-white disabled:opacity-30 gradient-purple-btn shadow-card"
+          whileTap={{ scale: 0.97 }}
+          title={!text.trim() ? 'Enter text first' : ''}
+        >
+          ✍️ Start Humanizing
+        </motion.button>
+      )}
+
+      {/* Result */}
       <AnimatePresence>
-        {scoreComparison && (
+        {result && !loading && (
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="mt-5 space-y-4"
+            transition={{ duration: 0.4 }}
+            className="mt-6 space-y-4"
           >
-            {/* Score cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="bg-card border border-border rounded-xl p-4 text-center">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">AI Score Before</span>
-                <span className={`text-2xl font-bold font-mono ${scoreComparison.before >= 75 ? 'text-destructive' : scoreComparison.before >= 56 ? 'text-warning' : 'text-success'}`}>
-                  {scoreComparison.before}%
-                </span>
-              </div>
-              <div className="bg-card border border-border rounded-xl p-4 text-center flex flex-col items-center justify-center">
-                <ArrowRight size={16} className="text-muted-foreground hidden sm:block" />
-                <ArrowDown size={16} className="text-muted-foreground sm:hidden" />
-                <span className="text-[10px] font-semibold text-success mt-1">
-                  −{scoreComparison.reduction}% reduction
-                </span>
-              </div>
-              <div className="bg-card border border-border rounded-xl p-4 text-center">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">AI Score After</span>
-                <span className={`text-2xl font-bold font-mono ${scoreComparison.after >= 75 ? 'text-destructive' : scoreComparison.after >= 56 ? 'text-warning' : 'text-success'}`}>
-                  {scoreComparison.after}%
-                </span>
-              </div>
-            </div>
-
-            {/* Replacement count */}
-            <div className="bg-card border border-border rounded-xl px-4 py-3">
-              <span className="text-xs font-semibold text-foreground">
-                {scoreComparison.totalReplacements} replacement{scoreComparison.totalReplacements !== 1 ? 's' : ''} applied
-              </span>
-            </div>
-
-            {/* Replacement tags */}
-            {scoreComparison.replacements.length > 0 && (
-              <div className="bg-card border border-border rounded-xl p-4">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-3">Replacements Made</span>
-                <div className="flex flex-wrap gap-2">
-                  {scoreComparison.replacements.map((r, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-1.5 text-[11px] bg-muted/50 border border-border rounded-full px-2.5 py-1"
+            {/* Output card */}
+            <div>
+              <span className="text-[10px] font-semibold text-success uppercase tracking-wider mb-2 block">Humanized Output ✅</span>
+              <div
+                className="bg-card rounded-2xl p-5 shadow-card"
+                style={{ border: '1px solid rgba(139, 92, 246, 0.2)', borderLeft: '3px solid #34D399' }}
+              >
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{result.output}</p>
+                <div className="flex items-center justify-between mt-4 pt-3 border-t" style={{ borderColor: 'rgba(139, 92, 246, 0.15)' }}>
+                  <span className="text-[10px] font-mono text-muted-foreground">{outputWordCount} words</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={copyOutput}
+                      className="flex items-center gap-1.5 text-[11px] font-semibold px-4 py-2 rounded-xl transition-all"
+                      style={{ border: '1px solid rgba(139, 92, 246, 0.3)', color: '#A78BFA' }}
                     >
-                      <span className="text-destructive/70 line-through">{r.original}</span>
-                      <ArrowRight size={10} className="text-muted-foreground" />
-                      <span className="text-success font-medium">{r.replacement}</span>
-                    </span>
-                  ))}
+                      {copied ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+                      {copied ? 'Copied! ✅' : '📋 Copy Text'}
+                    </button>
+                    <button
+                      onClick={handleShare}
+                      className="flex items-center gap-1.5 text-[11px] font-semibold px-4 py-2 rounded-xl text-white gradient-purple-btn"
+                    >
+                      <Share2 size={12} /> 📤 Share
+                    </button>
+                  </div>
                 </div>
               </div>
+              <div className="mt-2 flex justify-center">
+                <span className="text-[10px] font-semibold px-3 py-1 rounded-full bg-success/15 text-success">
+                  Ready to use — AI detector safe ✅
+                </span>
+              </div>
+            </div>
+
+            {/* Score Comparison */}
+            {scoreComparison && (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="bg-card rounded-2xl p-4 text-center shadow-card" style={{ border: '1px solid rgba(139, 92, 246, 0.2)' }}>
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">AI Score Before</span>
+                    <span className="text-2xl font-bold font-mono" style={{ color: scoreComparison.before >= 75 ? '#F87171' : scoreComparison.before >= 56 ? '#FBBF24' : '#34D399' }}>
+                      {scoreComparison.before}%
+                    </span>
+                  </div>
+                  <div className="bg-card rounded-2xl p-4 text-center flex flex-col items-center justify-center shadow-card" style={{ border: '1px solid rgba(139, 92, 246, 0.2)' }}>
+                    <ArrowRight size={16} className="text-muted-foreground hidden sm:block" />
+                    <ArrowDown size={16} className="text-muted-foreground sm:hidden" />
+                    <span className="text-[10px] font-semibold text-success mt-1">−{scoreComparison.reduction}% reduction</span>
+                  </div>
+                  <div className="bg-card rounded-2xl p-4 text-center shadow-card" style={{ border: '1px solid rgba(139, 92, 246, 0.2)' }}>
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">AI Score After</span>
+                    <span className="text-2xl font-bold font-mono" style={{ color: scoreComparison.after >= 75 ? '#F87171' : scoreComparison.after >= 56 ? '#FBBF24' : '#34D399' }}>
+                      {scoreComparison.after}%
+                    </span>
+                  </div>
+                </div>
+                <div className="bg-card rounded-2xl px-4 py-3 shadow-card" style={{ border: '1px solid rgba(139, 92, 246, 0.2)' }}>
+                  <span className="text-xs font-semibold text-foreground">{scoreComparison.totalReplacements} replacement{scoreComparison.totalReplacements !== 1 ? 's' : ''} applied</span>
+                </div>
+                {scoreComparison.replacements.length > 0 && (
+                  <div className="bg-card rounded-2xl p-4 shadow-card" style={{ border: '1px solid rgba(139, 92, 246, 0.2)' }}>
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-3">Replacements Made</span>
+                    <div className="flex flex-wrap gap-2">
+                      {scoreComparison.replacements.map((r, i) => (
+                        <span key={i} className="inline-flex items-center gap-1.5 text-[11px] bg-secondary rounded-full px-2.5 py-1" style={{ border: '1px solid rgba(139, 92, 246, 0.15)' }}>
+                          <span style={{ color: '#F87171' }} className="line-through">{r.original}</span>
+                          <ArrowRight size={10} className="text-muted-foreground" />
+                          <span style={{ color: '#34D399' }} className="font-medium">{r.replacement}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </motion.div>
             )}
+
+            <motion.button
+              onClick={() => { setResult(null); setText(''); setScoreComparison(null); }}
+              className="w-full py-3.5 rounded-xl text-sm font-semibold text-white gradient-purple-btn shadow-card"
+              whileTap={{ scale: 0.97 }}
+            >
+              ✍️ Humanize Again
+            </motion.button>
           </motion.div>
         )}
       </AnimatePresence>
