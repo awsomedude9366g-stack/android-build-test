@@ -68,7 +68,7 @@ const AI_PHRASE_MAP: [string, string][] = [
   ['by leveraging', 'using'],
   ['on the other hand', 'but'],
   ['in the realm of', 'in'],
-  ["in today's world", 'today'],
+  ["in today's world", 'These days'],
   ['in the modern era', 'these days'],
   ['rapidly evolving', 'fast-changing'],
   ['ever-changing landscape', 'changing world'],
