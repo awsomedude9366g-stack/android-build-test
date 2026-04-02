@@ -19,25 +19,51 @@ function AppShell() {
   const [activePage, setActivePage] = useState<Page>('home');
 
   return (
-    <div className="min-h-svh bg-background" style={{ paddingRight: 60 }}>
-      <VerticalNav activeTab={activePage} onNavigate={(t) => setActivePage(t as Page)} />
+    <div
+      className="bg-background"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100dvh',
+        display: 'flex',
+        flexDirection: 'row',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Main content area */}
+      <div
+        style={{
+          flex: 1,
+          width: 'calc(100vw - 56px)',
+          height: '100dvh',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activePage}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+          >
+            {activePage === 'home' && <HomePage onNavigate={(t) => setActivePage(t as Page)} />}
+            {activePage === 'detect' && <DetectPage onBack={() => setActivePage('home')} />}
+            {activePage === 'humanize' && <HumanizePage onBack={() => setActivePage('home')} />}
+            {activePage === 'similarity' && <SimilarityPage onBack={() => setActivePage('home')} />}
+            {activePage === 'history' && <HistoryPage />}
+            {activePage === 'settings' && <SettingsPage />}
+          </motion.div>
+        </AnimatePresence>
+      </div>
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activePage}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-        >
-          {activePage === 'home' && <HomePage onNavigate={(t) => setActivePage(t as Page)} />}
-          {activePage === 'detect' && <DetectPage onBack={() => setActivePage('home')} />}
-          {activePage === 'humanize' && <HumanizePage onBack={() => setActivePage('home')} />}
-          {activePage === 'similarity' && <SimilarityPage onBack={() => setActivePage('home')} />}
-          {activePage === 'history' && <HistoryPage />}
-          {activePage === 'settings' && <SettingsPage />}
-        </motion.div>
-      </AnimatePresence>
+      {/* Right nav */}
+      <VerticalNav activeTab={activePage} onNavigate={(t) => setActivePage(t as Page)} />
     </div>
   );
 }

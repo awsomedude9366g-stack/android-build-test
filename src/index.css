@@ -56,17 +56,41 @@
 @layer base {
   * {
     @apply border-border;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   html {
-    -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+    overflow-x: hidden;
+  }
+
+  html, body, #root {
+    width: 100%;
+    max-width: 100vw;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
   }
 
   body {
     @apply bg-background text-foreground font-body antialiased;
     overscroll-behavior-y: contain;
     min-height: 100svh;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* iOS input zoom fix — never go below 16px */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* Button active press */
+  button:active {
+    transform: scale(0.97);
+    transition: transform 0.1s;
   }
 }
 
@@ -162,7 +186,7 @@ body::after {
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -173,6 +197,16 @@ body::after {
 }
 
 /* Smooth transitions */
-button, a, input, textarea {
+button, a {
   transition: all 0.2s ease;
+}
+
+/* Keyboard open adjustments */
+@media (max-height: 500px) {
+  .inner-footer {
+    position: relative;
+  }
+  .inner-body {
+    max-height: 50vh;
+  }
 }
