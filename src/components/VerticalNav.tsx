@@ -1,8 +1,6 @@
 import { Home, Clock, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-type Tab = 'detect' | 'humanize' | 'similarity' | 'home' | 'history' | 'settings';
-
 interface VerticalNavProps {
   activeTab: string;
   onNavigate: (tab: string) => void;
@@ -20,11 +18,15 @@ export default function VerticalNav({ activeTab, onNavigate }: VerticalNavProps)
 
   return (
     <nav
-      className="fixed right-0 top-0 bottom-0 z-[1000] flex flex-col items-center justify-center gap-8"
+      className="flex flex-col items-center justify-center gap-7"
       style={{
-        width: 60,
-        background: '#12102A',
-        borderLeft: '1px solid rgba(139, 92, 246, 0.2)',
+        width: 56,
+        minWidth: 56,
+        height: '100dvh',
+        background: 'hsl(var(--secondary))',
+        borderLeft: '1px solid hsl(var(--border))',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
       {items.map((item) => {
@@ -34,17 +36,19 @@ export default function VerticalNav({ activeTab, onNavigate }: VerticalNavProps)
           <button
             key={item.id}
             onClick={() => onNavigate(item.id)}
-            className="relative flex flex-col items-center gap-1 group"
-            style={{ transition: 'transform 0.2s ease' }}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.1)')}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            className="relative flex flex-col items-center justify-center"
+            style={{
+              width: 44,
+              height: 56,
+              borderRadius: 12,
+              gap: 3,
+            }}
           >
-            {/* Active indicator pill */}
             {active && (
               <motion.div
                 layoutId="vnav-pill"
-                className="absolute -left-[18px] top-1/2 -translate-y-1/2 w-[3px] h-7 rounded-full"
-                style={{ backgroundColor: '#8B5CF6' }}
+                className="absolute left-0 top-1/2 -translate-y-1/2 rounded-r-sm"
+                style={{ width: 3, height: 28, backgroundColor: 'hsl(var(--primary))' }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               />
             )}
@@ -53,16 +57,16 @@ export default function VerticalNav({ activeTab, onNavigate }: VerticalNavProps)
               strokeWidth={active ? 2 : 1.5}
               className="transition-colors duration-200"
               style={{
-                color: active ? '#8B5CF6' : '#4D3F77',
+                color: active ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
                 filter: active ? 'drop-shadow(0 0 6px rgba(139, 92, 246, 0.5))' : 'none',
               }}
             />
             <span
               className="transition-colors duration-200"
               style={{
-                fontSize: 9,
+                fontSize: 8,
                 fontWeight: 500,
-                color: active ? '#8B5CF6' : '#4D3F77',
+                color: active ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
               }}
             >
               {item.label}

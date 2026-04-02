@@ -22,54 +22,54 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="min-h-svh px-6 pt-8 pb-12">
-      <motion.h1
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="font-display text-xl text-foreground mb-6 tracking-tight"
-      >
-        History
-      </motion.h1>
+    <div className="flex flex-col" style={{ height: '100%', overflow: 'hidden', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      <div className="shrink-0" style={{ height: 52, padding: '0 16px', display: 'flex', alignItems: 'center' }}>
+        <motion.h1 initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="font-display text-lg text-foreground tracking-tight">
+          History
+        </motion.h1>
+      </div>
 
-      {history.length === 0 ? (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="flex flex-col items-center justify-center mt-24 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-card flex items-center justify-center mb-4" style={{ border: '1px solid rgba(139, 92, 246, 0.2)' }}>
-            <Scan size={20} className="text-muted-foreground" strokeWidth={1.5} />
-          </div>
-          <p className="text-sm text-muted-foreground">No history yet</p>
-          <p className="text-xs text-muted-foreground/50 mt-1">Results will appear here after you use a tool.</p>
-        </motion.div>
-      ) : (
-        <div className="space-y-2">
-          {history.map((entry, i) => {
-            const Icon = iconMap[entry.type];
-            return (
-              <motion.div
-                key={entry.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04, duration: 0.4 }}
-                className="bg-card rounded-2xl p-4 flex items-start gap-3 group shadow-card"
-                style={{ border: '1px solid rgba(139, 92, 246, 0.2)' }}
-              >
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${colorMap[entry.type]}15` }}>
-                  <Icon size={16} strokeWidth={1.8} style={{ color: colorMap[entry.type] }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{labelMap[entry.type]}</span>
-                    <span className="text-[9px] text-muted-foreground/40 font-mono">{new Date(entry.timestamp).toLocaleDateString()}</span>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ padding: '0 12px 12px', WebkitOverflowScrolling: 'touch' }}>
+        {history.length === 0 ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="flex flex-col items-center justify-center mt-20 text-center">
+            <div className="flex items-center justify-center mb-3 bg-card rounded-2xl" style={{ width: 48, height: 48, border: '1px solid hsl(var(--border))' }}>
+              <Scan size={20} className="text-muted-foreground" strokeWidth={1.5} />
+            </div>
+            <p className="text-sm text-muted-foreground">No history yet</p>
+            <p className="text-[11px] text-muted-foreground/50 mt-1">Results will appear here after you use a tool.</p>
+          </motion.div>
+        ) : (
+          <div className="space-y-2">
+            {history.map((entry, i) => {
+              const Icon = iconMap[entry.type];
+              return (
+                <motion.div
+                  key={entry.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04, duration: 0.4 }}
+                  className="bg-card rounded-2xl p-3 flex items-start gap-3 shadow-card"
+                  style={{ border: '1px solid hsl(var(--border))', overflow: 'hidden', wordBreak: 'break-word' }}
+                >
+                  <div className="shrink-0 flex items-center justify-center rounded-xl" style={{ width: 36, height: 36, backgroundColor: `${colorMap[entry.type]}15` }}>
+                    <Icon size={14} strokeWidth={1.8} style={{ color: colorMap[entry.type] }} />
                   </div>
-                  <p className="text-xs text-foreground/80 truncate">{entry.input}</p>
-                </div>
-                <motion.button whileTap={{ scale: 0.9 }} onClick={() => copyResult(entry)} className="text-muted-foreground/40 hover:text-foreground p-1.5 rounded-lg transition-colors">
-                  <Copy size={14} strokeWidth={1.8} />
-                </motion.button>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{labelMap[entry.type]}</span>
+                      <span className="text-[9px] text-muted-foreground/40 font-mono">{new Date(entry.timestamp).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-[11px] text-foreground/80 truncate">{entry.input}</p>
+                  </div>
+                  <motion.button whileTap={{ scale: 0.9 }} onClick={() => copyResult(entry)} className="text-muted-foreground/40 p-1.5 rounded-lg" style={{ minWidth: 32, minHeight: 32 }}>
+                    <Copy size={14} strokeWidth={1.8} />
+                  </motion.button>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
