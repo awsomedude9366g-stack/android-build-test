@@ -9,7 +9,7 @@ import SimilarityPage from "./pages/SimilarityPage";
 import HomePage from "./pages/HomePage";
 import HistoryPage from "./pages/HistoryPage";
 import SettingsPage from "./pages/SettingsPage";
-import VerticalNav from "./components/VerticalNav";
+import FloatingPillNav from "./components/FloatingPillNav";
 
 const queryClient = new QueryClient();
 
@@ -28,7 +28,7 @@ function AppShell() {
         width: '100vw',
         height: '100dvh',
         display: 'flex',
-        flexDirection: 'row',
+        flexDirection: 'column',
         overflow: 'hidden',
       }}
     >
@@ -36,11 +36,11 @@ function AppShell() {
       <div
         style={{
           flex: 1,
-          width: 'calc(100vw - 56px)',
-          height: '100dvh',
+          width: '100vw',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
+          paddingBottom: 90,
         }}
       >
         <AnimatePresence mode="wait">
@@ -62,8 +62,8 @@ function AppShell() {
         </AnimatePresence>
       </div>
 
-      {/* Right nav */}
-      <VerticalNav activeTab={activePage} onNavigate={(t) => setActivePage(t as Page)} />
+      {/* Floating pill nav */}
+      <FloatingPillNav activeTab={activePage} onNavigate={(t) => setActivePage(t as Page)} />
     </div>
   );
 }

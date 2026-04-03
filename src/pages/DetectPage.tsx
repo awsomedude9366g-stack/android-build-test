@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Trash2, ClipboardPaste } from 'lucide-react';
 import { runDetection, LocalDetectionResult } from '@/lib/detectAlgorithm';
-import { toast } from 'sonner';
+import { useAppStore } from '@/lib/store';
 
 const MAX_CHARS = 5000;
 
@@ -11,7 +11,8 @@ interface DetectPageProps {
 }
 
 export default function DetectPage({ onBack }: DetectPageProps) {
-  const [text, setText] = useState('');
+  const text = useAppStore((s) => s.detectText);
+  const setText = useAppStore((s) => s.setDetectText);
   const [result, setResult] = useState<LocalDetectionResult | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -22,7 +23,6 @@ export default function DetectPage({ onBack }: DetectPageProps) {
   const handleDetect = () => {
     if (!isReady) return;
     setLoading(true);
-    setResult(null);
     setTimeout(() => {
       setResult(runDetection(text.slice(0, MAX_CHARS)));
       setLoading(false);
@@ -32,6 +32,11 @@ export default function DetectPage({ onBack }: DetectPageProps) {
   const handlePaste = async () => {
     const t = await navigator.clipboard.readText();
     setText(t);
+  };
+
+  const handleClear = () => {
+    setText('');
+    setResult(null);
   };
 
   const verdictConfig: Record<string, { label: string; emoji: string; color: string; bg: string }> = {
@@ -51,7 +56,6 @@ export default function DetectPage({ onBack }: DetectPageProps) {
 
   return (
     <div className="flex flex-col" style={{ height: '100%', overflow: 'hidden' }}>
-      {/* Header — 52px */}
       <div className="flex items-center justify-between shrink-0" style={{ height: 52, padding: '0 12px' }}>
         <button onClick={onBack} className="flex items-center justify-center" style={{ width: 40, height: 40, borderRadius: 12 }}>
           <ArrowLeft size={18} className="text-foreground" />
@@ -60,9 +64,7 @@ export default function DetectPage({ onBack }: DetectPageProps) {
         <span className="text-[10px] font-semibold px-2 py-1 rounded-full gradient-purple-btn text-primary-foreground">🔍 Beta</span>
       </div>
 
-      {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden inner-body" style={{ padding: '12px 12px 8px', WebkitOverflowScrolling: 'touch' }}>
-        {/* Input Card */}
         <div className="bg-card rounded-2xl shadow-card overflow-hidden" style={{ border: '1px solid hsl(var(--border))' }}>
           <textarea
             value={text}
@@ -75,7 +77,7 @@ export default function DetectPage({ onBack }: DetectPageProps) {
           <div className="flex items-center justify-between px-3 py-2 border-t border-border">
             <span className="text-[11px] font-mono text-muted-foreground">{charCount}/{MAX_CHARS}</span>
             <div className="flex gap-1.5 flex-wrap">
-              <button onClick={() => { setText(''); setResult(null); }} className="flex items-center gap-1 text-[11px] text-muted-foreground px-3 py-1.5 rounded-full" style={{ border: '1px solid hsl(var(--border))', whiteSpace: 'nowrap' }}>
+              <button onClick={handleClear} className="flex items-center gap-1 text-[11px] text-muted-foreground px-3 py-1.5 rounded-full" style={{ border: '1px solid hsl(var(--border))', whiteSpace: 'nowrap' }}>
                 <Trash2 size={12} /> Clear
               </button>
               <button onClick={handlePaste} className="flex items-center gap-1 text-[11px] text-muted-foreground px-3 py-1.5 rounded-full" style={{ border: '1px solid hsl(var(--border))', whiteSpace: 'nowrap' }}>
@@ -85,7 +87,6 @@ export default function DetectPage({ onBack }: DetectPageProps) {
           </div>
         </div>
 
-        {/* Loading */}
         {loading && (
           <div className="mt-6 flex flex-col items-center py-8">
             <div className="w-10 h-10 rounded-full border-2 border-primary/30 border-t-primary animate-spin mb-3" />
@@ -97,7 +98,6 @@ export default function DetectPage({ onBack }: DetectPageProps) {
           </div>
         )}
 
-        {/* Results */}
         <AnimatePresence>
           {result && !loading && (
             <motion.div
@@ -106,7 +106,6 @@ export default function DetectPage({ onBack }: DetectPageProps) {
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
               className="mt-4 space-y-3"
             >
-              {/* AI vs Human bars */}
               <div className="bg-card rounded-2xl p-4 shadow-card" style={{ border: '1px solid hsl(var(--border))' }}>
                 <div className="mb-3">
                   <div className="flex justify-between text-xs mb-1">
@@ -134,7 +133,6 @@ export default function DetectPage({ onBack }: DetectPageProps) {
                 <p className="text-[10px] text-muted-foreground text-center mt-1.5">Based on {wordCount} words across {result.signals.length} signals</p>
               </div>
 
-              {/* Signal Breakdown */}
               <div className="space-y-2">
                 <h3 className="text-xs font-bold text-foreground">Signal Breakdown</h3>
                 <div className="space-y-2">
@@ -170,7 +168,6 @@ export default function DetectPage({ onBack }: DetectPageProps) {
                 </div>
               </div>
 
-              {/* Found Phrases */}
               {result.foundPhrases.length > 0 && (
                 <div className="bg-card rounded-2xl p-4 shadow-card space-y-2" style={{ border: '1px solid hsl(var(--border))', overflow: 'hidden', wordBreak: 'break-word' }}>
                   <h3 className="text-xs font-bold text-foreground">AI Phrases Found ({result.foundPhrases.length})</h3>
@@ -186,26 +183,15 @@ export default function DetectPage({ onBack }: DetectPageProps) {
         </AnimatePresence>
       </div>
 
-      {/* Footer button — 68px */}
       <div className="shrink-0 inner-footer" style={{ height: 68, padding: '10px 12px', paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}>
-        {result ? (
-          <motion.button
-            onClick={() => { setResult(null); setText(''); }}
-            className="w-full py-3 rounded-xl text-sm font-semibold text-primary-foreground gradient-purple-btn shadow-card"
-            whileTap={{ scale: 0.97 }}
-          >
-            🔍 Detect Again
-          </motion.button>
-        ) : (
-          <motion.button
-            onClick={handleDetect}
-            disabled={!isReady || loading}
-            className="w-full py-3 rounded-xl text-sm font-semibold text-primary-foreground disabled:opacity-30 gradient-purple-btn shadow-card"
-            whileTap={{ scale: 0.97 }}
-          >
-            {loading ? 'Processing...' : '🔍 Start Detection'}
-          </motion.button>
-        )}
+        <motion.button
+          onClick={handleDetect}
+          disabled={!isReady || loading}
+          className="w-full py-3 rounded-xl text-sm font-semibold text-primary-foreground disabled:opacity-30 gradient-purple-btn shadow-card"
+          whileTap={{ scale: 0.97 }}
+        >
+          {loading ? 'Processing...' : '🔍 Start Detection'}
+        </motion.button>
       </div>
     </div>
   );

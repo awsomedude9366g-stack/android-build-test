@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0D0D1A" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <title>ClarityScribe — AI Writing Toolkit</title>
+    <title>AIdusk — AI Writing Toolkit</title>
     <meta name="description" content="Detect, Humanize & Compare AI text instantly">
     <meta name="author" content="Lovable" />
     <meta property="og:type" content="website" />
@@ -14,13 +14,12 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@Lovable" />
     <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3327bf24-4305-4df7-9fdf-b2ea8d4dbc4a/id-preview-addbb0f4--591f388b-c3d0-4f2f-92c8-5d54b962d021.lovable.app-1774031010203.png">
-    <meta property="og:title" content="ClarityScribe">
-    <meta name="twitter:title" content="ClarityScribe">
+    <meta property="og:title" content="AIdusk">
+    <meta name="twitter:title" content="AIdusk">
     <meta property="og:description" content="Detect, Humanize & Compare AI text instantly">
     <meta name="twitter:description" content="Detect, Humanize & Compare AI text instantly">
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <style>
-      /* Splash screen */
       #splash {
         position: fixed; inset: 0; z-index: 99999;
         background: #0D0D1A;
@@ -29,13 +28,15 @@
         transition: opacity 0.4s ease;
       }
       #splash.hide { opacity: 0; pointer-events: none; }
-      #splash .logo {
-        width: 48px; height: 48px; border-radius: 50%;
-        background: linear-gradient(135deg, #7C3AED, #A78BFA);
-        display: flex; align-items: center; justify-content: center;
-        color: #fff; font-family: 'Space Grotesk', system-ui, sans-serif;
-        font-size: 20px; font-weight: 700;
-        animation: splash-pulse 1.2s ease-in-out infinite;
+      #splash .logo-text {
+        font-family: 'Space Grotesk', system-ui, sans-serif;
+        font-size: 28px; font-weight: 800;
+      }
+      #splash .logo-text .ai { color: #FFFFFF; }
+      #splash .logo-text .dusk { color: #8B5CF6; }
+      #splash .tagline {
+        font-size: 11px; color: #4B5563; margin-top: 4px;
+        font-family: 'Inter', system-ui, sans-serif;
       }
       #splash .spinner {
         margin-top: 20px; width: 24px; height: 24px;
@@ -45,12 +46,12 @@
         animation: splash-spin 0.8s linear infinite;
       }
       @keyframes splash-spin { to { transform: rotate(360deg); } }
-      @keyframes splash-pulse { 0%,100% { box-shadow: 0 0 20px rgba(139,92,246,0.3); } 50% { box-shadow: 0 0 30px rgba(139,92,246,0.6); } }
     </style>
   </head>
   <body>
     <div id="splash">
-      <div class="logo">C</div>
+      <div class="logo-text"><span class="ai">AI</span><span class="dusk">dusk</span></div>
+      <div class="tagline">Darkness reveals the truth</div>
       <div class="spinner"></div>
     </div>
     <div id="root"></div>

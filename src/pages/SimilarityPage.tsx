@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Trash2, ClipboardPaste, ArrowLeftRight } from 'lucide-react';
 import { checkSimilarity, SimilarityResult } from '@/lib/api';
+import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
 
 const MAX_CHARS = 5000;
@@ -11,8 +12,10 @@ interface SimilarityPageProps {
 }
 
 export default function SimilarityPage({ onBack }: SimilarityPageProps) {
-  const [textA, setTextA] = useState('');
-  const [textB, setTextB] = useState('');
+  const textA = useAppStore((s) => s.similarityTextA);
+  const setTextA = useAppStore((s) => s.setSimilarityTextA);
+  const textB = useAppStore((s) => s.similarityTextB);
+  const setTextB = useAppStore((s) => s.setSimilarityTextB);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<(SimilarityResult & { overall_score?: number }) | null>(null);
 
@@ -21,7 +24,6 @@ export default function SimilarityPage({ onBack }: SimilarityPageProps) {
 
   const handleCheck = async () => {
     if (!textA.trim() || !textB.trim() || loading) return;
-    setResult(null);
     setLoading(true);
     try {
       const res = await checkSimilarity(textA.slice(0, MAX_CHARS), textB.slice(0, MAX_CHARS));
@@ -63,7 +65,6 @@ export default function SimilarityPage({ onBack }: SimilarityPageProps) {
 
   return (
     <div className="flex flex-col" style={{ height: '100%', overflow: 'hidden' }}>
-      {/* Header */}
       <div className="flex items-center justify-between shrink-0" style={{ height: 52, padding: '0 12px' }}>
         <button onClick={onBack} className="flex items-center justify-center" style={{ width: 40, height: 40, borderRadius: 12 }}>
           <ArrowLeft size={18} className="text-foreground" />
@@ -72,25 +73,18 @@ export default function SimilarityPage({ onBack }: SimilarityPageProps) {
         <span className="text-[10px] font-semibold px-2 py-1 rounded-full text-primary-foreground gradient-green-btn">📊 Compare</span>
       </div>
 
-      {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden inner-body" style={{ padding: '12px 12px 8px', WebkitOverflowScrolling: 'touch' }}>
-        {/* Text A */}
         <div>
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">Text A</span>
             <span className="text-[10px] font-mono text-muted-foreground">{wordCountA}w</span>
           </div>
           <div className="bg-card rounded-2xl shadow-card overflow-hidden" style={{ border: '1px solid hsl(var(--border))' }}>
-            <textarea
-              value={textA}
-              onChange={(e) => setTextA(e.target.value)}
-              placeholder="Paste first text…"
+            <textarea value={textA} onChange={(e) => setTextA(e.target.value)} placeholder="Paste first text…"
               className="w-full p-3 bg-transparent text-foreground placeholder:text-muted-foreground/40 focus:outline-none resize-none"
-              style={{ minHeight: 90, maxHeight: '25vh', fontSize: 16, boxSizing: 'border-box' }}
-              maxLength={MAX_CHARS}
-            />
+              style={{ minHeight: 90, maxHeight: '25vh', fontSize: 16, boxSizing: 'border-box' }} maxLength={MAX_CHARS} />
             <div className="flex justify-end gap-1.5 px-3 py-1.5 border-t border-border">
-              <button onClick={() => setTextA('')} className="flex items-center gap-1 text-[11px] text-muted-foreground px-3 py-1.5 rounded-full" style={{ border: '1px solid hsl(var(--border))', whiteSpace: 'nowrap' }}>
+              <button onClick={() => { setTextA(''); }} className="flex items-center gap-1 text-[11px] text-muted-foreground px-3 py-1.5 rounded-full" style={{ border: '1px solid hsl(var(--border))', whiteSpace: 'nowrap' }}>
                 <Trash2 size={11} /> Clear
               </button>
               <button onClick={async () => setTextA(await navigator.clipboard.readText())} className="flex items-center gap-1 text-[11px] text-muted-foreground px-3 py-1.5 rounded-full" style={{ border: '1px solid hsl(var(--border))', whiteSpace: 'nowrap' }}>
@@ -100,7 +94,6 @@ export default function SimilarityPage({ onBack }: SimilarityPageProps) {
           </div>
         </div>
 
-        {/* VS */}
         <div className="flex items-center gap-3" style={{ margin: '6px 0' }}>
           <div className="flex-1 h-px bg-border" />
           <button onClick={swapTexts} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -109,23 +102,17 @@ export default function SimilarityPage({ onBack }: SimilarityPageProps) {
           <div className="flex-1 h-px bg-border" />
         </div>
 
-        {/* Text B */}
         <div>
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">Text B</span>
             <span className="text-[10px] font-mono text-muted-foreground">{wordCountB}w</span>
           </div>
           <div className="bg-card rounded-2xl shadow-card overflow-hidden" style={{ border: '1px solid hsl(var(--border))' }}>
-            <textarea
-              value={textB}
-              onChange={(e) => setTextB(e.target.value)}
-              placeholder="Paste second text…"
+            <textarea value={textB} onChange={(e) => setTextB(e.target.value)} placeholder="Paste second text…"
               className="w-full p-3 bg-transparent text-foreground placeholder:text-muted-foreground/40 focus:outline-none resize-none"
-              style={{ minHeight: 90, maxHeight: '25vh', fontSize: 16, boxSizing: 'border-box' }}
-              maxLength={MAX_CHARS}
-            />
+              style={{ minHeight: 90, maxHeight: '25vh', fontSize: 16, boxSizing: 'border-box' }} maxLength={MAX_CHARS} />
             <div className="flex justify-end gap-1.5 px-3 py-1.5 border-t border-border">
-              <button onClick={() => setTextB('')} className="flex items-center gap-1 text-[11px] text-muted-foreground px-3 py-1.5 rounded-full" style={{ border: '1px solid hsl(var(--border))', whiteSpace: 'nowrap' }}>
+              <button onClick={() => { setTextB(''); }} className="flex items-center gap-1 text-[11px] text-muted-foreground px-3 py-1.5 rounded-full" style={{ border: '1px solid hsl(var(--border))', whiteSpace: 'nowrap' }}>
                 <Trash2 size={11} /> Clear
               </button>
               <button onClick={async () => setTextB(await navigator.clipboard.readText())} className="flex items-center gap-1 text-[11px] text-muted-foreground px-3 py-1.5 rounded-full" style={{ border: '1px solid hsl(var(--border))', whiteSpace: 'nowrap' }}>
@@ -135,7 +122,6 @@ export default function SimilarityPage({ onBack }: SimilarityPageProps) {
           </div>
         </div>
 
-        {/* Loading */}
         {loading && (
           <div className="mt-6 flex flex-col items-center py-8">
             <div className="w-10 h-10 rounded-full border-2 border-primary/30 border-t-primary animate-spin mb-3" />
@@ -143,36 +129,23 @@ export default function SimilarityPage({ onBack }: SimilarityPageProps) {
           </div>
         )}
 
-        {/* Results */}
         <AnimatePresence>
           {result && !loading && (
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="mt-4 space-y-3"
-            >
-              {/* Score Circle + Bars */}
+            <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mt-4 space-y-3">
               <div className="bg-card rounded-2xl p-4 shadow-card" style={{ border: '1px solid hsl(var(--border))' }}>
                 <div className="flex items-center gap-4">
                   <div className="relative shrink-0" style={{ width: 100, height: 100 }}>
                     <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                       <circle cx="50" cy="50" r={radius} fill="none" stroke="rgba(139,92,246,0.15)" strokeWidth="6" />
-                      <motion.circle
-                        cx="50" cy="50" r={radius} fill="none"
-                        stroke={scoreColor} strokeWidth="6" strokeLinecap="round"
-                        strokeDasharray={circumference}
-                        initial={{ strokeDashoffset: circumference }}
-                        animate={{ strokeDashoffset }}
-                        transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
-                      />
+                      <motion.circle cx="50" cy="50" r={radius} fill="none" stroke={scoreColor} strokeWidth="6" strokeLinecap="round"
+                        strokeDasharray={circumference} initial={{ strokeDashoffset: circumference }} animate={{ strokeDashoffset }}
+                        transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }} />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <span className="text-2xl font-mono font-bold" style={{ color: scoreColor }}>{overallScore}%</span>
                       <span className="text-[9px] text-muted-foreground">Overall</span>
                     </div>
                   </div>
-
                   <div className="flex-1 min-w-0 space-y-2">
                     {[
                       { label: 'Semantic', value: safeNum(result.semantic_similarity) },
@@ -193,7 +166,6 @@ export default function SimilarityPage({ onBack }: SimilarityPageProps) {
                 </div>
               </div>
 
-              {/* Verdict + Risk */}
               <div className="bg-card rounded-xl p-3 shadow-card flex items-center justify-between flex-wrap gap-2" style={{ border: '1px solid hsl(var(--border))' }}>
                 <p className="text-xs text-foreground font-medium">{result.verdict}</p>
                 <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full" style={{ backgroundColor: riskColor(result.plagiarism_risk).bg, color: riskColor(result.plagiarism_risk).color }}>
@@ -201,7 +173,6 @@ export default function SimilarityPage({ onBack }: SimilarityPageProps) {
                 </span>
               </div>
 
-              {/* Matching Segments */}
               {(result.matching_segments?.length ?? 0) > 0 && (
                 <div className="bg-card rounded-xl shadow-card overflow-hidden" style={{ border: '1px solid hsl(var(--border))' }}>
                   <div className="px-3 py-2 border-b border-border">
@@ -225,9 +196,7 @@ export default function SimilarityPage({ onBack }: SimilarityPageProps) {
                               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{
                                 backgroundColor: seg.type === 'exact' ? 'rgba(248,113,113,0.15)' : 'rgba(251,191,36,0.15)',
                                 color: seg.type === 'exact' ? '#F87171' : '#FBBF24',
-                              }}>
-                                {seg.type === 'exact' ? 'Exact' : 'Para.'}
-                              </span>
+                              }}>{seg.type === 'exact' ? 'Exact' : 'Para.'}</span>
                             </td>
                           </tr>
                         ))}
@@ -248,26 +217,15 @@ export default function SimilarityPage({ onBack }: SimilarityPageProps) {
         </AnimatePresence>
       </div>
 
-      {/* Footer */}
       <div className="shrink-0 inner-footer" style={{ height: 68, padding: '10px 12px', paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}>
-        {result ? (
-          <motion.button
-            onClick={() => { setResult(null); setTextA(''); setTextB(''); }}
-            className="w-full py-3 rounded-xl text-sm font-semibold text-primary-foreground shadow-card gradient-green-btn"
-            whileTap={{ scale: 0.97 }}
-          >
-            📊 Compare Again
-          </motion.button>
-        ) : (
-          <motion.button
-            onClick={handleCheck}
-            disabled={!textA.trim() || !textB.trim() || loading}
-            className="w-full py-3 rounded-xl text-sm font-semibold text-primary-foreground disabled:opacity-30 shadow-card gradient-green-btn"
-            whileTap={{ scale: 0.97 }}
-          >
-            {loading ? 'Processing...' : '📊 Check Similarity'}
-          </motion.button>
-        )}
+        <motion.button
+          onClick={handleCheck}
+          disabled={!textA.trim() || !textB.trim() || loading}
+          className="w-full py-3 rounded-xl text-sm font-semibold text-primary-foreground disabled:opacity-30 shadow-card gradient-green-btn"
+          whileTap={{ scale: 0.97 }}
+        >
+          {loading ? 'Processing...' : '📊 Check Similarity'}
+        </motion.button>
       </div>
     </div>
   );

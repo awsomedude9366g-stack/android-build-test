@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { Settings, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
+import logoImg from '@/assets/logo.png';
 
 interface HomePageProps {
   onNavigate: (page: string) => void;
@@ -33,35 +34,33 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         paddingTop: 'env(safe-area-inset-top, 0px)',
       }}
     >
-      {/* Header — 56px */}
+      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="flex items-center justify-between shrink-0"
+        className="flex items-center shrink-0"
         style={{ height: 56, padding: '0 16px' }}
       >
         <div className="flex items-center gap-2.5">
-          <div className="relative w-8 h-8 flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full bg-primary/30 blur-lg" />
-            <div className="relative w-7 h-7 rounded-full gradient-purple-btn flex items-center justify-center">
-              <span className="text-primary-foreground font-display text-xs">C</span>
-            </div>
-          </div>
+          <img
+            src={logoImg}
+            alt="AIdusk logo"
+            style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain' }}
+          />
           <div>
-            <h1 className="font-display text-base text-foreground tracking-tight leading-none">ClarityScribe</h1>
-            <p className="text-[9px] text-muted-foreground leading-none mt-0.5">AI Writing Toolkit</p>
+            <h1 className="font-display text-base text-foreground tracking-tight leading-none">
+              <span style={{ fontWeight: 800, color: '#FFFFFF' }}>AI</span>
+              <span style={{ fontWeight: 800, color: '#8B5CF6' }}>dusk</span>
+            </h1>
+            <p className="leading-none mt-0.5" style={{ fontSize: 11, color: '#4B5563', fontWeight: 400 }}>
+              Darkness reveals the truth
+            </p>
           </div>
         </div>
-        <button
-          onClick={() => onNavigate('settings')}
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
-        >
-          <Settings size={18} className="text-primary" strokeWidth={1.5} />
-        </button>
       </motion.div>
 
-      {/* Hero — auto height, compact */}
+      {/* Hero */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -69,14 +68,15 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         className="shrink-0"
         style={{ padding: '8px 16px 0' }}
       >
-        <h2 className="font-display text-foreground leading-tight" style={{ fontSize: 22 }}>
-          Your AI Writing<br />
-          <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Toolkit 🚀</span>
+        <h2 className="font-display leading-tight" style={{ fontSize: 28 }}>
+          <span style={{ fontWeight: 800, color: '#FFFFFF' }}>AI written?</span>
+          <br />
+          <span style={{ fontWeight: 800, color: '#8B5CF6' }}>We'll know.</span>
         </h2>
         <p className="text-xs text-muted-foreground mt-1">Detect, Humanize & Compare — instantly</p>
       </motion.div>
 
-      {/* Stats row — 48px */}
+      {/* Stats row */}
       <div className="flex items-center shrink-0" style={{ height: 48, padding: '0 16px' }}>
         <span className="text-foreground font-semibold text-xs">10K+</span>
         <span className="text-muted-foreground text-[10px] ml-1">Scans</span>
@@ -87,7 +87,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         <span className="text-foreground font-semibold text-xs">Free</span>
       </div>
 
-      {/* Tools — flex 1, fills remaining */}
+      {/* Tools */}
       <div className="flex flex-col gap-2.5 min-h-0" style={{ flex: 1, padding: '0 16px 8px' }}>
         {tools.map((tool, i) => (
           <motion.button
@@ -122,7 +122,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         ))}
       </div>
 
-      {/* Bottom stats row */}
+      {/* Bottom stats */}
       <div className="grid grid-cols-3 gap-2 shrink-0" style={{ padding: '0 16px 12px' }}>
         {[
           { label: 'Scans Done', value: stats.scans },
