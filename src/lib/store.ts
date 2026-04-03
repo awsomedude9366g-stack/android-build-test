@@ -13,10 +13,19 @@ interface AppState {
   hasOnboarded: boolean;
   darkMode: boolean;
   history: HistoryEntry[];
+  // Persisted textarea content
+  detectText: string;
+  humanizeText: string;
+  similarityTextA: string;
+  similarityTextB: string;
   setOnboarded: () => void;
   toggleDarkMode: () => void;
   addHistory: (entry: Omit<HistoryEntry, 'id' | 'timestamp'>) => void;
   clearHistory: () => void;
+  setDetectText: (t: string) => void;
+  setHumanizeText: (t: string) => void;
+  setSimilarityTextA: (t: string) => void;
+  setSimilarityTextB: (t: string) => void;
 }
 
 const loadState = () => {
@@ -36,6 +45,10 @@ export const useAppStore = create<AppState>((set) => ({
   hasOnboarded: initial.hasOnboarded,
   darkMode: initial.darkMode,
   history: initial.history,
+  detectText: '',
+  humanizeText: '',
+  similarityTextA: '',
+  similarityTextB: '',
   setOnboarded: () => {
     localStorage.setItem('syntax-onboarded', 'true');
     set({ hasOnboarded: true });
@@ -58,4 +71,8 @@ export const useAppStore = create<AppState>((set) => ({
     localStorage.setItem('syntax-history', '[]');
     set({ history: [] });
   },
+  setDetectText: (t) => set({ detectText: t }),
+  setHumanizeText: (t) => set({ humanizeText: t }),
+  setSimilarityTextA: (t) => set({ similarityTextA: t }),
+  setSimilarityTextB: (t) => set({ similarityTextB: t }),
 }));

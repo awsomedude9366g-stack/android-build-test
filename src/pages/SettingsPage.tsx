@@ -16,9 +16,7 @@ export default function SettingsPage() {
       <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ padding: '0 12px 12px', WebkitOverflowScrolling: 'touch' }}>
         <div className="space-y-2">
           <motion.button
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => clearHistory()}
             className="w-full bg-card rounded-2xl p-3.5 flex items-center gap-3 shadow-card"
@@ -31,9 +29,7 @@ export default function SettingsPage() {
           </motion.button>
 
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             className="bg-card rounded-2xl p-3.5 flex items-start gap-3 shadow-card"
             style={{ border: '1px solid hsl(var(--border))' }}
           >
@@ -41,7 +37,9 @@ export default function SettingsPage() {
               <Info size={16} className="text-primary" strokeWidth={1.8} />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-foreground tracking-tight">About ClarityScribe</h3>
+              <h3 className="text-sm font-semibold text-foreground tracking-tight">
+                About <span style={{ fontWeight: 800, color: '#FFFFFF' }}>AI</span><span style={{ fontWeight: 800, color: '#8B5CF6' }}>dusk</span>
+              </h3>
               <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
                 Professional AI writing toolkit. Detect AI text, humanize your writing, and compare documents.
               </p>
