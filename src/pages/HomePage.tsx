@@ -78,7 +78,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       </div>
 
       {/* Tools */}
-      <div className="flex flex-col gap-2.5 min-h-0" style={{ flex: 1, padding: '0 16px 8px' }}>
+      <div className="flex flex-col gap-2.5 min-h-0" style={{ flex: 1, padding: '0 16px 16px' }}>
         {tools.map((tool, i) => (
           <motion.button
             key={tool.page}
