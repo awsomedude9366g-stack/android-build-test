@@ -7,7 +7,6 @@ interface HomePageProps {
 }
 
 export default function HomePage({ onNavigate }: HomePageProps) {
-
   const tools = [
     { emoji: '🔍', title: 'AI Detector', subtitle: 'Detect AI-written text instantly', page: 'detect', accent: 'hsl(var(--primary))' },
     { emoji: '✍️', title: 'Humanizer', subtitle: 'Make AI text sound human', page: 'humanize', accent: '#A78BFA' },
