@@ -22,7 +22,7 @@ export default function FloatingPillNav({ activeTab, onNavigate }: FloatingPillN
       <div
         style={{
           position: 'fixed',
-          bottom: 14,
+          bottom: 62,
           left: '50%',
           transform: 'translateX(-50%)',
           width: 180,
@@ -38,7 +38,7 @@ export default function FloatingPillNav({ activeTab, onNavigate }: FloatingPillN
       <div
         style={{
           position: 'fixed',
-          bottom: `max(20px, env(safe-area-inset-bottom))`,
+          bottom: 68,
           left: '50%',
           transform: 'translateX(-50%)',
           width: 220,
@@ -55,7 +55,7 @@ export default function FloatingPillNav({ activeTab, onNavigate }: FloatingPillN
       <div
         style={{
           position: 'fixed',
-          bottom: `calc(max(20px, env(safe-area-inset-bottom)) + 14px)`,
+          bottom: 82,
           left: '50%',
           transform: 'translateX(-50%)',
           width: 220,

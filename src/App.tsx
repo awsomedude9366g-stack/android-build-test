@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import DetectPage from "./pages/DetectPage";
 import HumanizePage from "./pages/HumanizePage";
@@ -10,6 +10,8 @@ import HomePage from "./pages/HomePage";
 import HistoryPage from "./pages/HistoryPage";
 import SettingsPage from "./pages/SettingsPage";
 import FloatingPillNav from "./components/FloatingPillNav";
+import AdBanner from "./components/AdBanner";
+import SplashScreen from "./components/SplashScreen";
 
 const queryClient = new QueryClient();
 
@@ -17,6 +19,9 @@ type Page = 'home' | 'detect' | 'humanize' | 'similarity' | 'history' | 'setting
 
 function AppShell() {
   const [activePage, setActivePage] = useState<Page>('home');
+  const [showSplash, setShowSplash] = useState(true);
+
+  const handleSplashFinished = useCallback(() => setShowSplash(false), []);
 
   return (
     <div
@@ -32,6 +37,8 @@ function AppShell() {
         overflow: 'hidden',
       }}
     >
+      {showSplash && <SplashScreen onFinished={handleSplashFinished} />}
+
       {/* Main content area */}
       <div
         style={{
@@ -40,7 +47,7 @@ function AppShell() {
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          paddingBottom: 90,
+          paddingBottom: 140,
         }}
       >
         <AnimatePresence mode="wait">
@@ -64,6 +71,7 @@ function AppShell() {
 
       {/* Floating pill nav */}
       <FloatingPillNav activeTab={activePage} onNavigate={(t) => setActivePage(t as Page)} />
+      <AdBanner />
     </div>
   );
 }
