@@ -7,16 +7,6 @@ interface HomePageProps {
 }
 
 export default function HomePage({ onNavigate }: HomePageProps) {
-  const stats = (() => {
-    try {
-      const h = JSON.parse(localStorage.getItem('syntax-history') || '[]');
-      return {
-        scans: h.filter((e: any) => e.type === 'detection').length,
-        humanized: h.filter((e: any) => e.type === 'humanize').length,
-        compared: h.filter((e: any) => e.type === 'similarity').length,
-      };
-    } catch { return { scans: 0, humanized: 0, compared: 0 }; }
-  })();
 
   const tools = [
     { emoji: '🔍', title: 'AI Detector', subtitle: 'Detect AI-written text instantly', page: 'detect', accent: 'hsl(var(--primary))' },
