@@ -22,7 +22,7 @@ export default function FloatingPillNav({ activeTab, onNavigate }: FloatingPillN
       <div
         style={{
           position: 'fixed',
-          bottom: 14,
+          bottom: 62,
           left: '50%',
           transform: 'translateX(-50%)',
           width: 180,
