@@ -112,23 +112,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         ))}
       </div>
 
-      {/* Bottom stats */}
-      <div className="grid grid-cols-3 gap-2 shrink-0" style={{ padding: '0 16px 12px' }}>
-        {[
-          { label: 'Scans Done', value: stats.scans },
-          { label: 'Humanized', value: stats.humanized },
-          { label: 'Compared', value: stats.compared },
-        ].map((s) => (
-          <div
-            key={s.label}
-            className="bg-card rounded-xl text-center shadow-card"
-            style={{ padding: '8px 4px', border: '1px solid hsl(var(--border))' }}
-          >
-            <span className="text-lg font-display text-primary block leading-none">{s.value}</span>
-            <span className="text-[9px] text-muted-foreground">{s.label}</span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
