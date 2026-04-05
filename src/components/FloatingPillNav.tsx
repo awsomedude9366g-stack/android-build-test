@@ -88,7 +88,7 @@ export default function FloatingPillNav({ activeTab, onNavigate }: FloatingPillN
             >
               <motion.div
                 animate={{
-                  y: active ? -14 : -10,
+                  y: active ? -4 : -2,
                   background: active ? '#6D28D9' : '#1E1B4B',
                   boxShadow: active
                     ? '0 0 16px rgba(109,40,217,0.85), 0 -4px 14px rgba(109,40,217,0.4), 0 4px 10px rgba(0,0,0,0.3)'
@@ -113,7 +113,7 @@ export default function FloatingPillNav({ activeTab, onNavigate }: FloatingPillN
               </motion.div>
 
               <motion.span
-                animate={{ y: active ? -14 : -10 }}
+                animate={{ y: active ? -4 : -2 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 style={{
                   fontSize: 10,
@@ -127,7 +127,7 @@ export default function FloatingPillNav({ activeTab, onNavigate }: FloatingPillN
               {active && (
                 <motion.div
                   layoutId="pill-dot"
-                  animate={{ y: -14 }}
+                  animate={{ y: -4 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                   style={{
                     width: 5,
