@@ -47,7 +47,7 @@ function AppShell() {
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          paddingBottom: 100,
+          paddingBottom: 140,
         }}
       >
         <AnimatePresence mode="wait">
