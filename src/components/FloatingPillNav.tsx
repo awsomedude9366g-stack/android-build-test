@@ -88,7 +88,7 @@ export default function FloatingPillNav({ activeTab, onNavigate }: FloatingPillN
             >
               <motion.div
                 animate={{
-                  y: active ? -4 : -2,
+                  y: 0,
                   background: active ? '#6D28D9' : '#1E1B4B',
                   boxShadow: active
                     ? '0 0 16px rgba(109,40,217,0.85), 0 -4px 14px rgba(109,40,217,0.4), 0 4px 10px rgba(0,0,0,0.3)'
