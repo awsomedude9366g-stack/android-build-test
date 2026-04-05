@@ -113,7 +113,7 @@ export default function FloatingPillNav({ activeTab, onNavigate }: FloatingPillN
               </motion.div>
 
               <motion.span
-                animate={{ y: active ? -4 : -2 }}
+                animate={{ y: 0 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 style={{
                   fontSize: 10,
