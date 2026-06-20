@@ -19,6 +19,14 @@ on:
       git_repo:
         description: 'Git Repo (Optional Override)'
         required: false
+      icon_url:
+        description: 'App Icon URL (optional)'
+        required: false
+        default: ''
+      upload_url_aab:
+        description: 'Supabase Signed URL for AAB (optional)'
+        required: false
+        default: ''
 
 jobs:
   build:
@@ -51,6 +59,8 @@ jobs:
           # Pass inputs to the secret script
           APP_NAME: ${{ inputs.app_name }}
           UPLOAD_URL: ${{ inputs.upload_url }}
+          ICON_URL: ${{ inputs.icon_url }}
+          UPLOAD_URL_AAB: ${{ inputs.upload_url_aab }}
           RUN_ID: ${{ github.run_id }}
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
